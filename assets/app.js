@@ -1,6 +1,5 @@
 // web/assets/app.js
-// VideoGPT-like: poster thumbnails, hover preview, For You feed + Following
-// ✅ Mobile tabs TikTok-style: auto scroll active tab into view.
+// ✅ TikTok-like mobile overlay tabs + swipe left/right to change tab.
 
 const SND_BASE = "https://guerin.acequia.io/ai/";
 
@@ -53,6 +52,7 @@ function seedNum(s){ return Array.from(s).reduce((a,c)=>a+c.charCodeAt(0),0); }
 function pick(arr, seed){ return arr[seed % arr.length]; }
 
 const CATEGORIES = ["viral","business","affiliate","aesthetic","tech","tutorial","food","community"];
+const TAB_ORDER = ["all","shorts","pov","cinematic","deals","local"];
 
 const HOOKS = {
   viral: ["ĐỪNG LƯỚT! Coi cái này đã…","ỦA GÌ VẬY TRỜI 😳","Xem tới cuối mới hiểu…","Cái này đang hot dữ…","Thử đoán xem chuyện gì xảy ra?"],
@@ -205,10 +205,9 @@ function modeLabel(tags) {
   return "SHORTS";
 }
 
-/* Poster cache */
+// Poster cache
 const POSTER_CACHE_PREFIX = "poster:v1:";
 const POSTER_TTL_MS = 1000 * 60 * 60 * 24 * 7;
-
 function posterKey(url){ return POSTER_CACHE_PREFIX + url; }
 function getCachedPoster(url){
   try{
@@ -240,7 +239,6 @@ async function capturePoster(url){
     v.addEventListener("loadeddata", () => {
       try{
         const target = Math.min(0.4, (v.duration || 1) * 0.1);
-
         const doShot = () => {
           try{
             const canvas = document.createElement("canvas");
@@ -323,15 +321,25 @@ const btnDownload = document.getElementById("btnDownload");
 
 const btnForYou = document.getElementById("btnForYou");
 const btnFollowing = document.getElementById("btnFollowing");
-
 const tabsBar = document.getElementById("tabsBar");
 
-document.getElementById("btnShuffle").addEventListener("click", () => {
+// Mobile overlay
+const mobileOverlay = document.getElementById("mobileOverlay");
+const overlayTabs = document.getElementById("overlayTabs");
+const mForYou = document.getElementById("mForYou");
+const mFollowing = document.getElementById("mFollowing");
+const mShuffle = document.getElementById("mShuffle");
+
+// Shuffle (sync both)
+const btnShuffle = document.getElementById("btnShuffle");
+function doShuffle(){
   currentList = shuffle([...currentList]);
   renderFeed(currentList);
   renderGrid(currentList);
   toast("Shuffled");
-});
+}
+btnShuffle.addEventListener("click", doShuffle);
+mShuffle.addEventListener("click", doShuffle);
 
 btnCloseModal.addEventListener("click", closeModal);
 modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
@@ -369,7 +377,6 @@ btnUnmute.addEventListener("click", () => {
 });
 
 btnDownload.addEventListener("click", () => downloadCurrentVideo());
-
 async function downloadCurrentVideo() {
   const src = pvVideo?.src || "";
   if (!src) return toast("Chưa có video");
@@ -403,23 +410,28 @@ async function downloadCurrentVideo() {
   }
 }
 
-// Feed mode toggle
+// Modes
 let feedMode = "for_you";
-btnForYou.addEventListener("click", () => {
-  feedMode = "for_you";
-  btnForYou.classList.add("active");
-  btnFollowing.classList.remove("active");
-  consoleMode.textContent = "for_you";
-  applyFilters();
-});
-btnFollowing.addEventListener("click", () => {
-  feedMode = "following";
-  btnFollowing.classList.add("active");
-  btnForYou.classList.remove("active");
-  consoleMode.textContent = "following";
-  applyFilters();
-});
+function setMode(mode){
+  feedMode = mode;
 
+  // desktop buttons
+  btnForYou.classList.toggle("active", mode==="for_you");
+  btnFollowing.classList.toggle("active", mode==="following");
+
+  // mobile overlay buttons
+  mForYou.classList.toggle("active", mode==="for_you");
+  mFollowing.classList.toggle("active", mode==="following");
+
+  consoleMode.textContent = mode==="for_you" ? "for_you" : "following";
+  applyFilters();
+}
+btnForYou.addEventListener("click", () => setMode("for_you"));
+btnFollowing.addEventListener("click", () => setMode("following"));
+mForYou.addEventListener("click", () => setMode("for_you"));
+mFollowing.addEventListener("click", () => setMode("following"));
+
+// Filters/tabs state
 let activeFilter = "all";
 let activeTab = "all";
 let currentList = [...TEMPLATES];
@@ -435,20 +447,35 @@ document.querySelectorAll(".nav-item").forEach(btn => {
   });
 });
 
-// TikTok-like tabs
-document.querySelectorAll(".tab").forEach(btn => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
-    btn.classList.add("active");
-    activeTab = btn.dataset.tab || "all";
-    applyFilters();
+// ✅ Unified tab setter (sync topbar + overlay)
+function setActiveTab(tabName, { smooth=true } = {}) {
+  activeTab = tabName || "all";
 
-    // ✅ scroll active tab into view (center)
-    try { btn.scrollIntoView({ behavior:"smooth", inline:"center", block:"nearest" }); } catch {}
-  });
+  // topbar
+  document.querySelectorAll(".tab").forEach(x => x.classList.toggle("active", x.dataset.tab === activeTab));
+  // overlay
+  document.querySelectorAll(".otab").forEach(x => x.classList.toggle("active", x.dataset.tab === activeTab));
+
+  applyFilters();
+
+  // scroll active into view (center)
+  const topActive = document.querySelector(`.tab[data-tab="${CSS.escape(activeTab)}"]`);
+  const ovActive  = document.querySelector(`.otab[data-tab="${CSS.escape(activeTab)}"]`);
+
+  try { topActive && topActive.scrollIntoView({ behavior: smooth ? "smooth":"instant", inline:"center", block:"nearest" }); } catch {}
+  try { ovActive  && ovActive.scrollIntoView({ behavior: smooth ? "smooth":"instant", inline:"center", block:"nearest" }); } catch {}
+}
+
+// topbar click
+document.querySelectorAll(".tab").forEach(btn => {
+  btn.addEventListener("click", () => setActiveTab(btn.dataset.tab, { smooth:true }));
+});
+// overlay click
+document.querySelectorAll(".otab").forEach(btn => {
+  btn.addEventListener("click", () => setActiveTab(btn.dataset.tab, { smooth:true }));
 });
 
-// Next in modal
+// Modal next
 pvNext.addEventListener("click", () => {
   if (!currentList.length) return;
   currentIndex = (currentIndex + 1) % currentList.length;
@@ -706,6 +733,7 @@ function openTemplate(t, { autoplay=true } = {}) {
   btnMute.style.display = "none";
   btnUnmute.style.display = "";
   btnPlayPause.textContent = "⏸";
+
   pvVideo.load();
 
   modal.classList.add("show");
@@ -747,13 +775,53 @@ function shortId(id) {
   return m ? `tpl_${m[1]}` : id;
 }
 
+// ✅ Swipe to change tab (mobile)
+function nextTab(dir){ // dir: +1 or -1
+  const i = TAB_ORDER.indexOf(activeTab);
+  const ni = Math.max(0, Math.min(TAB_ORDER.length - 1, i + dir));
+  if (ni !== i) setActiveTab(TAB_ORDER[ni], { smooth:true });
+}
+
+function setupSwipeTabs() {
+  let sx=0, sy=0, st=0;
+  let tracking = false;
+
+  feedList.addEventListener("touchstart", (e) => {
+    if (!e.touches || e.touches.length !== 1) return;
+    const t = e.touches[0];
+    sx = t.clientX; sy = t.clientY; st = Date.now();
+    tracking = true;
+  }, { passive:true });
+
+  feedList.addEventListener("touchend", (e) => {
+    if (!tracking) return;
+    tracking = false;
+
+    const t = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0] : null;
+    if (!t) return;
+
+    const dx = t.clientX - sx;
+    const dy = t.clientY - sy;
+    const dt = Date.now() - st;
+
+    // ignore slow drags
+    if (dt > 600) return;
+
+    // horizontal swipe requirement
+    if (Math.abs(dx) < 55) return;
+    if (Math.abs(dx) < Math.abs(dy) * 1.2) return;
+
+    // swipe left -> next tab, right -> prev
+    if (dx < 0) nextTab(+1);
+    else nextTab(-1);
+  }, { passive:true });
+}
+
 // Boot
 applyFilters();
+setupSwipeTabs();
 
 // ✅ On load: keep active tab centered on mobile
 setTimeout(() => {
-  const active = document.querySelector(".tab.active");
-  if (active) {
-    try { active.scrollIntoView({ behavior:"instant", inline:"center", block:"nearest" }); } catch {}
-  }
-}, 50);
+  setActiveTab(activeTab, { smooth:false });
+}, 60);
