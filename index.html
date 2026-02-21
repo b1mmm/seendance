@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Video Agent — Trending Gallery</title>
+  <title>Video Agent — Trend Gallery</title>
   <link rel="stylesheet" href="./assets/app.css" />
 </head>
 <body>
@@ -16,13 +16,12 @@
 
       <div class="device">
         <span class="dot"></span>
-        <span id="deviceName">trending-feed</span>
+        <span id="deviceName">trend-feed</span>
         <span class="caret">▾</span>
       </div>
 
       <nav class="nav">
         <button class="nav-item active" data-filter="all">🔥 Khám phá tất cả</button>
-
         <button class="nav-item" data-filter="viral">🚀 Viral & Social</button>
         <button class="nav-item" data-filter="business">💼 Business & Marketing</button>
         <button class="nav-item" data-filter="affiliate">💰 Affiliate Ready</button>
@@ -34,7 +33,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div class="muted small">One-click preview • Run để xem ngay</div>
+        <div class="muted small">One-click • Run để xem video + prompt</div>
       </div>
     </aside>
 
@@ -81,9 +80,14 @@
         <video id="pvVideo" controls playsinline preload="metadata"></video>
       </div>
 
-      <div class="modal-actions">
-        <a class="btn ghost" id="pvOpen" href="#" target="_blank" rel="noreferrer">Open MP4</a>
-        <button class="btn primary" id="pvNext">Next</button>
+      <div class="prompt-wrap">
+        <div class="prompt-title">Prompt gợi ý</div>
+        <div class="prompt-box" id="pvPrompt"></div>
+        <div class="prompt-actions">
+          <button class="btn ghost" id="btnCopyPrompt">Copy Prompt</button>
+          <a class="btn ghost" id="pvOpen" href="#" target="_blank" rel="noreferrer">Open MP4</a>
+          <button class="btn primary" id="pvNext">Next</button>
+        </div>
       </div>
     </div>
   </div>
