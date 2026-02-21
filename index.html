@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Video Agent — Trend Gallery</title>
+  <title>Video Agent — VideoGPT-style</title>
   <link rel="stylesheet" href="./assets/app.css" />
 </head>
 <body>
@@ -33,7 +33,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div class="muted small">One-click • Run/Preview • Hover để xem nhanh</div>
+        <div class="muted small">Poster thumbnails • For You feed • Auto-play modal</div>
       </div>
     </aside>
 
@@ -49,15 +49,25 @@
         </div>
 
         <div class="top-actions">
+          <button class="seg active" id="btnForYou">For You</button>
+          <button class="seg" id="btnFollowing">Following</button>
           <button class="icon-btn" id="btnShuffle" title="Shuffle">⟳</button>
         </div>
       </header>
 
+      <!-- FEED (VideoGPT-like) -->
+      <section class="feed" id="feed" aria-label="For You feed">
+        <div class="feed-hint muted" id="feedHint">Scroll để lướt • Click card để mở modal</div>
+        <div class="feed-list" id="feedList"></div>
+      </section>
+
+      <!-- GRID (gallery) -->
       <section class="grid" id="grid"></section>
 
       <section class="panel">
         <div class="panel-title">Console</div>
         <div class="console">
+          <div class="line"><span class="k">Mode:</span> <span id="consoleMode" class="v">for_you</span></div>
           <div class="line"><span class="k">Status:</span> <span id="consoleStatus" class="v">ready</span></div>
           <div class="line"><span class="k">Selected:</span> <span id="consoleSelected" class="v">none</span></div>
         </div>
@@ -79,10 +89,16 @@
         </div>
       </div>
 
-      <!-- 9:16 frame -->
       <div class="video-stage">
         <div class="video-frame">
-          <video id="pvVideo" controls playsinline preload="metadata"></video>
+          <video id="pvVideo" playsinline preload="metadata"></video>
+
+          <div class="player-actions">
+            <button class="chip" id="btnPlayPause">⏸</button>
+            <button class="chip" id="btnMute">🔇</button>
+            <button class="chip" id="btnUnmute" style="display:none;">🔊</button>
+            <button class="chip" id="btnCopyLink">🔗 Copy MP4</button>
+          </div>
         </div>
 
         <div class="prompt-wrap">
