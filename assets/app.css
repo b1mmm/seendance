@@ -13,16 +13,37 @@
   --glass: rgba(13,18,26,.55);
 }
 
+/* ✅ GLOBAL ANTI-LECH: khóa overflow ngang + tránh 100vw gây lệch do scrollbar */
 *{box-sizing:border-box}
-html,body{height:100%}
-body{
+html, body{
+  height:100%;
   margin:0;
+  padding:0;
+  overflow-x:hidden !important;
+  width:100%;
+}
+body{
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
   background: var(--bg);
   color:var(--text);
+  position: relative;
 }
 
-.shell{height:100%;display:grid;grid-template-columns: 280px 1fr;}
+/* ✅ iOS safe area padding tránh bị lệch do notch */
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+}
+
+.shell{
+  min-height:100%;
+  width:100%;
+  overflow-x:hidden;
+  display:grid;
+  grid-template-columns: 280px 1fr;
+}
 
 .sidebar{
   background: var(--bg);
@@ -108,9 +129,11 @@ body{
   display:flex;
   flex-direction:column;
   gap:14px;
+  width:100%;
+  overflow-x:hidden;
 }
 
-/* TOPBAR (desktop baseline) */
+/* TOPBAR desktop */
 .topbar{
   display:flex;align-items:center;justify-content:space-between;
   padding:10px 12px;
@@ -135,7 +158,6 @@ body{
 }
 
 .top-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-
 .seg{
   padding:8px 12px;
   border-radius:999px;
@@ -150,7 +172,6 @@ body{
   background: rgba(111,179,255,.10);
   border-color: rgba(111,179,255,.25);
 }
-
 .icon-btn{
   width:36px;height:36px;
   border-radius:999px;
@@ -167,6 +188,8 @@ body{
   background: rgba(255,255,255,.02);
   overflow:hidden;
   position:relative;
+  width:100%;
+  max-width:100%;
 }
 .feed-hint{
   padding:10px 12px;
@@ -176,8 +199,10 @@ body{
 .feed-list{
   height: 62vh;
   overflow:auto;
+  overflow-x:hidden !important; /* ✅ */
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
+  width:100%;
 }
 .feed-item{
   scroll-snap-align: start;
@@ -187,6 +212,8 @@ body{
   gap:12px;
   padding: 12px;
   border-bottom:1px solid var(--border);
+  width:100%;
+  max-width:100%;
 }
 @media (max-width: 900px){
   .feed-item{ grid-template-columns: 1fr; min-height: 72vh; }
@@ -218,16 +245,23 @@ body{
 .feed-actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:6px;}
 .feed-actions .btn{padding:10px 14px}
 
+/* Mobile overlay (nếu có) */
+.mobile-overlay{display:none;}
+
 .grid{
   display:grid;
   grid-template-columns: repeat(3, minmax(220px, 1fr));
   gap:14px;
+  width:100%;
+  max-width:100%;
 }
 @media (max-width: 1100px){ .grid{grid-template-columns: repeat(2, 1fr);} }
 @media (max-width: 760px){
   .shell{grid-template-columns:1fr}
   .sidebar{display:none}
   .grid{grid-template-columns:1fr;}
+  .main{padding:0;} /* ✅ tránh padding gây cảm giác lệch */
+  .feed{border-radius:0;border-left:none;border-right:none;}
 }
 
 /* CARDS */
@@ -243,6 +277,8 @@ body{
   gap:10px;
   position: relative;
   overflow:hidden;
+  width:100%;
+  max-width:100%;
 }
 .card h3{margin:0;font-size:14px}
 .card p{margin:0;color:var(--muted);font-size:12px;line-height:1.35}
@@ -263,28 +299,11 @@ body{
 .btn.primary{background:var(--btn); color:var(--btnText)}
 .btn.ghost{background:rgba(255,255,255,.04); color:var(--text); border:1px solid var(--border)}
 
-/* PANEL */
-.panel{
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:12px;
-  background: rgba(255,255,255,.02);
-}
-.panel-title{font-weight:900;margin-bottom:10px}
-.console{display:flex;flex-direction:column;gap:6px}
-.line{display:flex;gap:10px;align-items:center}
-.k{width:80px;color:var(--muted);font-size:12px}
-.v{font-size:12px}
-
 /* BADGES + SOCIAL PROOF */
 .badges{
-  display:flex;
-  gap:8px;
-  position:absolute;
-  top:12px;
-  left:12px;
-  z-index: 4;
-  pointer-events:none;
+  display:flex; gap:8px;
+  position:absolute; top:12px; left:12px;
+  z-index: 4; pointer-events:none;
 }
 .badge{
   font-size:11px;
@@ -300,11 +319,8 @@ body{
 .badge.new{border-color: rgba(97,255,177,.35)}
 
 .proof-row{
-  display:flex;
-  gap:10px;
-  flex-wrap:wrap;
-  font-size:11px;
-  color: var(--muted);
+  display:flex; gap:10px; flex-wrap:wrap;
+  font-size:11px; color: var(--muted);
   margin-top: 2px;
 }
 .proof-chip{
@@ -329,38 +345,7 @@ body{
   display:block;
 }
 
-/* Hover preview */
-.hover-preview{
-  position:absolute;
-  inset:0;
-  opacity:0;
-  transition: opacity .18s ease;
-  z-index: 2;
-  pointer-events:none;
-  background: rgba(0,0,0,.35);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-.hover-preview .mini-frame{
-  width: 120px;
-  aspect-ratio: 9 / 16;
-  border-radius: 14px;
-  border:1px solid var(--border);
-  background:#000;
-  overflow:hidden;
-  box-shadow: var(--shadow);
-}
-.hover-preview video{
-  width:100%;
-  height:100%;
-  object-fit: cover;
-  display:block;
-}
-.card:hover .hover-preview{ opacity: 1; }
-.card .card-content{ position:relative; z-index: 3; }
-
-/* MODAL */
+/* MODAL – desktop */
 .modal{
   position:fixed; inset:0;
   background: rgba(0,0,0,.62);
@@ -368,6 +353,7 @@ body{
   align-items:center;
   justify-content:center;
   z-index: 50;
+  overflow:hidden; /* ✅ */
 }
 .modal.show{display:flex}
 
@@ -379,22 +365,15 @@ body{
   border-radius: 16px;
   box-shadow: var(--shadow);
   padding: 14px;
+  overflow:hidden;
 }
+
 .modal-head{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
   padding: 6px 6px 10px;
 }
-.modal-head-left{display:flex;flex-direction:column;gap:2px}
-.modal-head-right{display:flex;align-items:center;gap:10px}
 .modal-title{font-weight:900}
 .modal-sub{font-size:12px;color:var(--muted);margin-top:2px}
-.mini-proof{
-  display:flex; gap:8px; flex-wrap:wrap;
-  justify-content:flex-end;
-  color: var(--muted);
-  font-size:11px;
-}
-.mini-proof .proof-chip{ background: rgba(255,255,255,.02); }
 
 .video-stage{
   display:grid;
@@ -409,15 +388,12 @@ body{
   width: 100%;
   border:1px solid var(--border);
   border-radius: 16px;
-  background: rgba(255,255,255,.02);
+  background: #000;
   padding: 10px;
   position:relative;
-
   aspect-ratio: 9 / 16;
   max-height: 78svh;
-  display:flex;
-  align-items:center;
-  justify-content:center;
+  overflow:hidden;
 }
 .video-frame video{
   position:absolute;
@@ -425,29 +401,109 @@ body{
   width: calc(100% - 20px);
   height: calc(100% - 20px);
   object-fit: contain;
-  border-radius: 12px;
   background:#000;
   margin:0;
+  border-radius: 12px;
 }
 
-.player-actions{
-  position:absolute;
-  right: 18px;
-  bottom: 18px;
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-  z-index: 5;
-}
-.chip{
-  border:1px solid var(--border);
-  background: rgba(0,0,0,.35);
-  color: var(--text);
-  padding: 10px 12px;
-  border-radius: 999px;
-  cursor:pointer;
-  font-weight:900;
-  backdrop-filter: blur(8px);
+/* ✅ MOBILE: “fixed full-screen” — không lệch 100% */
+@media (max-width: 760px){
+  /* nếu bạn đang dùng overlay: bật lại */
+  .mobile-overlay{
+    display:block;
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    padding-top: env(safe-area-inset-top);
+    background: linear-gradient(to bottom, rgba(0,0,0,.72), rgba(0,0,0,.25), rgba(0,0,0,0));
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-bottom: 1px solid rgba(255,255,255,.06);
+  }
+
+  .feed-hint{display:none;}
+  .feed-list{
+    height: 78svh;
+    width:100%;
+    max-width:100%;
+  }
+
+  /* ✅ modal full screen lock */
+  .modal{
+    align-items: stretch;
+    justify-content: stretch;
+    background: rgba(0,0,0,.95);
+  }
+  .modal-inner{
+    width: 100%;
+    max-width: 100%;
+    height: 100svh;
+    max-height: 100svh;
+    border-radius: 0;
+    border: none;
+    padding: 0;
+    margin:0;
+    overflow:hidden;
+  }
+
+  /* sticky header */
+  .modal-head{
+    padding: 10px 12px;
+    padding-top: calc(10px + env(safe-area-inset-top));
+    border-bottom: 1px solid var(--border);
+    background: rgba(11,15,20,.98);
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .video-stage{
+    display:flex;
+    flex-direction:column;
+    gap:0;
+    height: calc(100svh - 64px);
+    overflow:hidden;
+  }
+
+  /* ✅ video area is EXACT FULL WIDTH, NO PADDING */
+  .video-frame{
+    border:none;
+    border-radius:0;
+    padding:0;
+    margin:0;
+    background:#000;
+    width:100%;
+    max-width:100%;
+    height: 62svh;
+    max-height: 62svh;
+    aspect-ratio:auto;
+    overflow:hidden;
+    position: relative;
+  }
+  .video-frame video{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    max-width:100%;
+    max-height:100%;
+    object-fit: contain;
+    border-radius:0;
+    background:#000;
+    display:block;
+  }
+
+  /* prompt area */
+  .prompt-wrap{
+    border:none;
+    border-top: 1px solid var(--border);
+    border-radius:0;
+    background: rgba(11,15,20,.96);
+    padding: 12px;
+    height: 38svh;
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 /* Prompt panel */
@@ -478,176 +534,25 @@ body{
   flex-wrap:wrap;
 }
 
-/* ✅ Mobile overlay TikTok-like */
-.mobile-overlay{
-  display:none;
+/* Player buttons */
+.player-actions{
+  position:absolute;
+  right: 18px;
+  bottom: 18px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  z-index: 5;
 }
-
-@media (max-width: 760px){
-  /* Hide desktop topbar (TikTok style uses overlay) */
-  .topbar{ display:none; }
-
-  /* Overlay appears inside feed */
-  .mobile-overlay{
-    display:block;
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    padding-top: env(safe-area-inset-top);
-    background: linear-gradient(to bottom, rgba(0,0,0,.72), rgba(0,0,0,.25), rgba(0,0,0,0));
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    border-bottom: 1px solid rgba(255,255,255,.06);
-  }
-
-  .overlay-row{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    padding: 10px 12px 6px;
-  }
-
-  .overlay-segs{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    justify-content:center;
-    width: 100%;
-  }
-
-  .seg.mini{
-    padding: 10px 14px;
-    min-width: 110px;
-    font-size: 14px;
-    background: rgba(255,255,255,.08);
-    border-color: rgba(255,255,255,.10);
-    color: rgba(255,255,255,.75);
-  }
-  .seg.mini.active{
-    background: rgba(255,255,255,.14);
-    border-color: rgba(255,255,255,.18);
-    color: #fff;
-  }
-  .icon-btn.mini{
-    width: 42px;
-    height: 42px;
-    background: rgba(255,255,255,.08);
-    border-color: rgba(255,255,255,.10);
-    flex: 0 0 auto;
-  }
-
-  .overlay-tabs{
-    display:flex;
-    gap: 18px;
-    overflow-x:auto;
-    overflow-y:hidden;
-    padding: 4px 12px 10px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width:none;
-  }
-  .overlay-tabs::-webkit-scrollbar{ display:none; }
-
-  .otab{
-    background: transparent;
-    border: none;
-    padding: 6px 2px;
-    border-radius: 0;
-    color: var(--accentDim);
-    font-weight: 900;
-    font-size: 15px;
-    position: relative;
-    white-space: nowrap;
-    opacity: .95;
-  }
-  .otab.active{
-    color: var(--accent);
-  }
-  .otab.active::after{
-    content:"";
-    position:absolute;
-    left: 0;
-    right: 0;
-    bottom: -6px;
-    height: 3px;
-    border-radius: 999px;
-    background: var(--accent);
-    opacity: .95;
-  }
-
-  /* feed hint off on mobile (overlay replaces it) */
-  .feed-hint{ display:none; }
-
-  /* make feed content start below overlay */
-  .feed-list{
-    height: 76vh;
-  }
-
-  /* modal fullscreen */
-  .modal{
-    align-items: stretch;
-    justify-content: stretch;
-    background: rgba(0,0,0,.92);
-  }
-  .modal-inner{
-    width: 100vw;
-    max-width: 100vw;
-    height: 100svh;
-    max-height: 100svh;
-    border-radius: 0;
-    border: none;
-    padding: 0;
-    overflow: hidden;
-  }
-  .modal-head{
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--border);
-    background: rgba(11,15,20,.95);
-    position: sticky;
-    top: 0;
-    z-index: 10;
-  }
-  .video-stage{
-    display:flex;
-    flex-direction:column;
-    gap: 0;
-    height: calc(100svh - 56px);
-  }
-
-  .video-frame{
-    border: none;
-    border-radius: 0;
-    padding: 0;
-    background: #000;
-
-    aspect-ratio: auto;
-    max-height: none;
-    height: 62svh;
-    display:block;
-  }
-  .video-frame video{
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    border-radius: 0;
-    object-fit: contain;
-  }
-  .player-actions{
-    right: 12px;
-    bottom: 12px;
-  }
-
-  .prompt-wrap{
-    border: none;
-    border-top: 1px solid var(--border);
-    border-radius: 0;
-    background: rgba(11,15,20,.96);
-    padding: 12px;
-    height: 38svh;
-    overflow: auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .prompt-actions{ justify-content: space-between; }
+.chip{
+  border:1px solid var(--border);
+  background: rgba(0,0,0,.35);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 999px;
+  cursor:pointer;
+  font-weight:900;
+  backdrop-filter: blur(8px);
 }
 
 /* Toast */
