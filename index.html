@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Video Agent — Trending Templates</title>
+  <title>Video Agent — Trending Gallery</title>
   <link rel="stylesheet" href="./assets/app.css" />
 </head>
 <body>
@@ -20,7 +20,6 @@
         <span class="caret">▾</span>
       </div>
 
-      <!-- NEW: Trending categories (sidebar) -->
       <nav class="nav">
         <button class="nav-item active" data-filter="all">🔥 Khám phá tất cả</button>
 
@@ -35,15 +34,12 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div class="muted small">
-          One-click demo • Bấm <b>Run</b> để xem preview.
-        </div>
+        <div class="muted small">One-click preview • Run để xem ngay</div>
       </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
-        <!-- NEW: Top tabs like “feed modes” -->
         <div class="tabs">
           <button class="tab active" data-tab="all">All</button>
           <button class="tab" data-tab="shorts">Shorts</button>
@@ -58,24 +54,13 @@
         </div>
       </header>
 
-      <!-- NEW: Hero bar (simple, no extra CSS needed) -->
-      <section class="panel">
-        <div class="panel-title">🔥 Trending Templates</div>
-        <div class="console">
-          <div class="line"><span class="k">Mood:</span> <span class="v">viral • gần gũi • dễ làm • dễ bán</span></div>
-          <div class="line"><span class="k">Tip:</span> <span class="v muted">Bắt đầu từ <b>Viral</b> hoặc <b>Affiliate</b> để thấy “phê” nhất.</span></div>
-          <div class="line"><span class="k">Action:</span> <span class="v muted">Bấm <b>Run</b> → xem video. Bạn sẽ gắn link MP4 sau trong <code>VIDEO_URLS</code>.</span></div>
-        </div>
-      </section>
-
       <section class="grid" id="grid"></section>
 
       <section class="panel">
-        <div class="panel-title">Preview Console</div>
+        <div class="panel-title">Console</div>
         <div class="console">
           <div class="line"><span class="k">Status:</span> <span id="consoleStatus" class="v">ready</span></div>
           <div class="line"><span class="k">Selected:</span> <span id="consoleSelected" class="v">none</span></div>
-          <div class="line"><span class="k">Hint:</span> <span class="v muted">Cứ bấm Run liên tục để “lướt template” như App Store.</span></div>
         </div>
       </section>
     </main>
@@ -87,7 +72,7 @@
       <div class="modal-head">
         <div>
           <div class="modal-title" id="pvTitle">Preview</div>
-          <div class="modal-sub" id="pvSub">Seedance demo clip</div>
+          <div class="modal-sub" id="pvSub">MP4 preview</div>
         </div>
         <button class="icon-btn" id="btnCloseModal" title="Close">✕</button>
       </div>
@@ -99,10 +84,6 @@
       <div class="modal-actions">
         <a class="btn ghost" id="pvOpen" href="#" target="_blank" rel="noreferrer">Open MP4</a>
         <button class="btn primary" id="pvNext">Next</button>
-      </div>
-
-      <div class="footnote muted">
-        * Demo UI mô phỏng AdbPad. Bạn chỉ cần gắn MP4 link trong <code>VIDEO_URLS</code> (app.js).
       </div>
     </div>
   </div>
