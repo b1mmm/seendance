@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Video Agent MVP</title>
+  <title>Seedance Video Agent — Demo</title>
   <link rel="stylesheet" href="./assets/app.css" />
 </head>
 <body>
@@ -16,94 +16,73 @@
 
       <div class="device">
         <span class="dot"></span>
-        <span id="deviceName">agent-01</span>
+        <span id="deviceName">emulator-5554</span>
         <span class="caret">▾</span>
       </div>
 
       <nav class="nav">
-        <button class="nav-item active" data-view="command">Command</button>
-        <button class="nav-item" data-view="templates">Templates</button>
-        <button class="nav-item" data-view="jobs">Jobs</button>
-        <button class="nav-item" data-view="export">Export</button>
+        <button class="nav-item active" data-filter="all">Command</button>
+        <button class="nav-item" data-filter="audit">Audit Bot Ads</button>
+        <button class="nav-item" data-filter="cafe">Cafe / Local</button>
+        <button class="nav-item" data-filter="brand">Brand / CTA</button>
       </nav>
 
       <div class="sidebar-footer">
-        <button class="nav-item" id="btnSetting" data-view="settings">Setting</button>
+        <div class="muted small">
+          Demo mode • one-click preview
+        </div>
       </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
         <div class="tabs">
-          <button class="tab active">All</button>
-          <button class="tab">Ads</button>
-          <button class="tab">Brand</button>
-          <button class="tab">Communication</button>
+          <button class="tab active" data-tab="all">All</button>
+          <button class="tab" data-tab="audit">Ads</button>
+          <button class="tab" data-tab="brand">Brand</button>
+          <button class="tab" data-tab="comm">Communication</button>
         </div>
 
         <div class="top-actions">
-          <button class="icon-btn" id="btnAdminToggle" title="Admin (Ctrl+K)">🛠</button>
-          <button class="icon-btn" id="btnRefresh" title="Refresh">⟳</button>
+          <button class="icon-btn" id="btnShuffle" title="Shuffle">⟳</button>
         </div>
       </header>
 
       <section class="grid" id="grid"></section>
 
       <section class="panel">
-        <div class="panel-title">Recent Jobs</div>
-        <div class="jobs" id="jobs"></div>
+        <div class="panel-title">Preview Console</div>
+        <div class="console">
+          <div class="line"><span class="k">Status:</span> <span id="consoleStatus" class="v">ready</span></div>
+          <div class="line"><span class="k">Selected:</span> <span id="consoleSelected" class="v">none</span></div>
+          <div class="line"><span class="k">Hint:</span> <span class="v muted">Bấm Run để xem video. Link MP4 sẽ do bạn gắn vào app.js sau.</span></div>
+        </div>
       </section>
     </main>
   </div>
 
-  <!-- ADMIN DRAWER -->
-  <div class="drawer" id="adminDrawer" aria-hidden="true">
-    <div class="drawer-inner">
-      <div class="drawer-head">
+  <!-- PREVIEW MODAL -->
+  <div class="modal" id="previewModal" aria-hidden="true">
+    <div class="modal-inner">
+      <div class="modal-head">
         <div>
-          <div class="drawer-title">Admin Panel</div>
-          <div class="drawer-sub">Complete jobs without curl</div>
+          <div class="modal-title" id="pvTitle">Preview</div>
+          <div class="modal-sub" id="pvSub">Seedance demo clip</div>
         </div>
-        <button class="icon-btn" id="btnAdminClose" title="Close">✕</button>
+        <button class="icon-btn" id="btnCloseModal" title="Close">✕</button>
       </div>
 
-      <div class="form">
-        <label class="label">Worker API Base</label>
-        <input class="input" id="adminApiBase" placeholder="https://xxx.workers.dev" />
+      <div class="video-wrap">
+        <video id="pvVideo" controls playsinline preload="metadata"></video>
+      </div>
 
-        <label class="label">Admin Token (Bearer)</label>
-        <input class="input" id="adminToken" placeholder="Paste ADMIN_TOKEN here" />
+      <div class="modal-actions">
+        <a class="btn ghost" id="pvOpen" href="#" target="_blank" rel="noreferrer">Open MP4</a>
+        <button class="btn primary" id="pvNext">Next</button>
+      </div>
 
-        <div class="row">
-          <button class="btn primary" id="btnSaveAdmin">Save</button>
-          <button class="btn ghost" id="btnClearAdmin">Clear</button>
-          <span class="hint" id="adminStatus">locked</span>
-        </div>
-
-        <div class="divider"></div>
-
-        <div class="mini">
-          <div class="mini-title">Quick Complete</div>
-          <div class="mini-sub">Paste Job ID + Video URL</div>
-
-          <label class="label">Job ID</label>
-          <input class="input" id="qJobId" placeholder="job_..." />
-
-          <label class="label">Video URL</label>
-          <input class="input" id="qVideoUrl" placeholder="https://.../video.mp4" />
-
-          <label class="label">Thumb URL (optional)</label>
-          <input class="input" id="qThumbUrl" placeholder="https://.../thumb.jpg" />
-
-          <div class="row">
-            <button class="btn primary" id="btnQuickComplete">Complete</button>
-            <button class="btn ghost" id="btnQuickStart">Start</button>
-            <button class="btn danger" id="btnQuickFail">Fail</button>
-          </div>
-
-          <label class="label">Fail reason (optional)</label>
-          <input class="input" id="qFailReason" placeholder="e.g. seedance_error" />
-        </div>
+      <div class="footnote muted">
+        * Demo UI mô phỏng AdbPad. Bạn chỉ cần gắn MP4 link trong <code>VIDEO_URLS</code> (app.js).
       </div>
     </div>
   </div>
