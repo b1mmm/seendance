@@ -1,86 +1,160 @@
 // web/assets/app.js
-// Demo UI (AdbPad-like) — no settings, no auth, one-click preview
+// Trending demo UI (AdbPad-like) — no settings, no hints, one-click preview
 
-// 1) Bạn chỉ cần gắn MP4 link ở đây sau:
-const VIDEO_URLS = {
-  // Audit Camera Bot Ads (dán link mp4 của bạn vào value)
-  audit_warning: "",        // e.g. "https://.../audit_warning.mp4"
-  ai_scan: "",
-  telegram_alert: "",
-  before_after: "",
-  cta_audit_now: "",
+// Local videos folder on GitHub Pages:
+// Put your 8 local mp4 files into: web/videos/
+const LOCAL_BASE = "./videos/";
 
-  // Cafe / local (nếu bạn muốn demo thêm)
-  cafe_mediterranean: "",
-  cafe_sunset: ""
-};
+// Provided videos
+const PROVIDED_VIDEOS = [
+  // Local (SND) — stored in web/videos/
+  "[SND]BethGulfofMexico.mp4",
+  "[SND]Breecker-crane-over-head-with-LOTR-Nazgul.mp4",
+  "[SND]breecker-dolly-left-swipe-in-person.mp4",
+  "[SND]ed-angel-gorilla-2.mp4",
+  "[SND]ed-angel-gorilla.mp4",
+  "[SND]errand-missed-catch.mp4",
+  "[SND]Graydon_RxBurn.mp4",
+  "[SND]nyc-lateshow-icecream.mp4",
 
-// 2) Danh sách card demo (hiện ngay trên web)
-const TEMPLATES = [
-  {
-    id: "audit_warning",
-    title: "Camera Exposed — Warning",
-    desc: "Intro đánh mạnh tâm lý: camera lộ internet → cảnh báo đỏ.",
-    tags: ["audit", "ads"],
-    ratio: "9:16",
-    style: "Cinematic",
-    duration: "6s"
-  },
-  {
-    id: "ai_scan",
-    title: "AI Scan IP — Risk Score",
-    desc: "AI quét IP + chấm điểm rủi ro + UI cyber.",
-    tags: ["audit", "ads"],
-    ratio: "9:16",
-    style: "Cyber UI",
-    duration: "6s"
-  },
-  {
-    id: "telegram_alert",
-    title: "Telegram Alert — Push",
-    desc: "Thông báo Telegram bật lên: phát hiện camera rủi ro.",
-    tags: ["audit", "comm"],
-    ratio: "9:16",
-    style: "Neon",
-    duration: "6s"
-  },
-  {
-    id: "before_after",
-    title: "Before / After — Secured",
-    desc: "So sánh trước/sau: insecure → secured (shield effect).",
-    tags: ["audit", "brand"],
-    ratio: "9:16",
-    style: "Dramatic",
-    duration: "6s"
-  },
-  {
-    id: "cta_audit_now",
-    title: "CTA — Audit Now",
-    desc: "Cảnh kết: logo + call to action (đăng TikTok/Reels).",
-    tags: ["audit", "brand"],
-    ratio: "9:16",
-    style: "Cinematic",
-    duration: "6s"
-  },
-  {
-    id: "cafe_mediterranean",
-    title: "Cafe — Mediterranean Vibe",
-    desc: "Demo style địa trung hải: hoa giấy, biển, ánh nắng.",
-    tags: ["cafe", "ads"],
-    ratio: "9:16",
-    style: "Realistic",
-    duration: "6s"
-  },
-  {
-    id: "cafe_sunset",
-    title: "Cafe — Sunset Reel",
-    desc: "Golden hour, biển, chuyển động camera mượt.",
-    tags: ["cafe", "brand"],
-    ratio: "9:16",
-    style: "Cinematic",
-    duration: "6s"
-  }
+  // Remote URLs
+  "https://guerin.acequia.io/ai/owen-dolly-in-smile.mp4",
+  "https://guerin.acequia.io/ai/owen-dolly-right-smile.mp4",
+  "https://guerin.acequia.io/ai/plume-bulletcam-partial-fail.mp4",
+  "https://guerin.acequia.io/ai/plume-dolly-left.mp4",
+  "https://guerin.acequia.io/ai/plume-orbit.mp4",
+  "https://guerin.acequia.io/ai/plume-rotate-right.mp4",
+  "https://guerin.acequia.io/ai/red-river-thumbs-up.mp4",
+  "https://guerin.acequia.io/ai/red-river-thumbs-up2.mp4",
+  "https://guerin.acequia.io/ai/ron-jill-dolly-out.mp4",
+  "https://guerin.acequia.io/ai/ron-jill-toast.mp4",
+  "https://guerin.acequia.io/ai/Stu-Stephen-museumHill-ai.mp4"
 ];
+
+// ---- Build a normalized list with URL + meta ----
+function normalizeVideo(item) {
+  if (item.startsWith("[SND]")) {
+    const filename = item.replace("[SND]", "").trim();
+    return {
+      source: "local",
+      filename,
+      url: `${LOCAL_BASE}${encodeURIComponent(filename)}`
+    };
+  }
+  // remote
+  const url = item.trim();
+  const filename = decodeURIComponent(url.split("/").pop() || "video.mp4");
+  return { source: "remote", filename, url };
+}
+
+const VIDEOS = PROVIDED_VIDEOS.map(normalizeVideo);
+
+// ---- Tagging / categorization heuristics (for your new index.html filters) ----
+function baseName(filename) {
+  return filename.replace(/\.mp4$/i, "");
+}
+
+function titleFromFilename(filename) {
+  // Make it feel like “trending template cards”
+  const name = baseName(filename)
+    .replace(/[_-]+/g, " ")
+    .replace(/\bai\b/gi, "AI")
+    .replace(/\bnyc\b/gi, "NYC")
+    .trim();
+
+  // Title case-ish
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .map(w => w.length <= 2 ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1))
+    .join(" ");
+}
+
+function pickTags(filename) {
+  const f = filename.toLowerCase();
+
+  // Primary categories (must match sidebar filters in index.html)
+  const tags = new Set(["viral"]); // default trending feed
+
+  // Motion / cinematic feel
+  if (f.includes("dolly") || f.includes("crane") || f.includes("orbit") || f.includes("rotate") || f.includes("bulletcam")) {
+    tags.add("cinematic");
+  }
+
+  // POV vibes
+  if (f.includes("in-person") || f.includes("missed") || f.includes("catch") || f.includes("smile")) {
+    tags.add("pov");
+  }
+
+  // Tech & AI vibe
+  if (f.includes("ai") || f.includes("bulletcam")) {
+    tags.add("tech");
+  }
+
+  // Aesthetic / lifestyle
+  if (f.includes("nyc") || f.includes("icecream") || f.includes("beth") || f.includes("gulf") || f.includes("museum") || f.includes("sunset")) {
+    tags.add("aesthetic");
+  }
+
+  // Community / reactions
+  if (f.includes("thumbs-up") || f.includes("toast") || f.includes("smile")) {
+    tags.add("community");
+  }
+
+  // Business/Affiliate/Local/Food — map lightly based on words (can expand later)
+  if (f.includes("icecream")) tags.add("food");
+  if (f.includes("nyc") || f.includes("museum")) tags.add("local");
+
+  // Secondary feed tabs in index.html
+  tags.add("shorts"); // all are short clips style
+
+  // Optional: affiliate-ready for “product-like” clips (you can refine later)
+  // tags.add("affiliate");
+
+  return Array.from(tags);
+}
+
+function shortDesc(filename, source) {
+  const f = filename.toLowerCase();
+  const motion =
+    f.includes("dolly") ? "Dolly shot" :
+    f.includes("crane") ? "Crane overhead" :
+    f.includes("orbit") ? "Orbit camera" :
+    f.includes("rotate") ? "Rotate move" :
+    f.includes("bulletcam") ? "Bullet-cam" :
+    "Trending clip";
+
+  const vibe =
+    f.includes("nazgul") ? "Fantasy vibe" :
+    f.includes("gorilla") ? "Surreal creature" :
+    f.includes("icecream") ? "Street snack vibe" :
+    f.includes("thumbs-up") ? "Reaction-friendly" :
+    f.includes("toast") ? "Social moment" :
+    f.includes("museum") ? "Aesthetic travel" :
+    f.includes("smile") ? "Feel-good" :
+    f.includes("burn") ? "Action vibe" :
+    "Viral-ready";
+
+  return `${motion} • ${vibe} • ${source === "local" ? "local" : "cloud"}`;
+}
+
+// ---- Build templates directly from your video list ----
+const TEMPLATES = VIDEOS.map((v, i) => {
+  const id = `tpl_${i + 1}`;
+  return {
+    id,
+    videoUrl: v.url,
+    title: titleFromFilename(v.filename),
+    desc: shortDesc(v.filename, v.source),
+    tags: pickTags(v.filename),
+    ratio: "9:16",
+    style: v.source === "local" ? "Local" : "Cloud",
+    duration: "6s"
+  };
+});
+
+// Build lookup for video URLs
+const VIDEO_URLS = Object.fromEntries(TEMPLATES.map(t => [t.id, t.videoUrl]));
 
 // ---------- DOM ----------
 const grid = document.getElementById("grid");
@@ -105,6 +179,14 @@ document.getElementById("btnShuffle").addEventListener("click", () => {
 btnCloseModal.addEventListener("click", closeModal);
 modal.addEventListener("click", (e) => {
   if (e.target === modal) closeModal();
+});
+
+// Keyboard support
+window.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeModal();
+  if (modal.classList.contains("show") && (e.key === "ArrowRight" || e.key === "Enter")) {
+    pvNext.click();
+  }
 });
 
 let activeFilter = "all";
@@ -148,9 +230,7 @@ function applyFilters() {
   }
 
   if (activeTab !== "all") {
-    // map tab -> tags
-    const tabTag = activeTab === "comm" ? "comm" : activeTab; // audit/brand/comm
-    list = list.filter(t => t.tags.includes(tabTag));
+    list = list.filter(t => t.tags.includes(activeTab));
   }
 
   currentList = list;
@@ -203,32 +283,22 @@ function renderGrid(list) {
 
 // ---------- Actions ----------
 function runTemplate(t) {
-  consoleStatus.textContent = "running (demo)";
+  consoleStatus.textContent = "running";
   consoleSelected.textContent = t.title;
-
-  // In demo mode, Run = open preview immediately
   openTemplate(t);
 }
 
 function openTemplate(t) {
-  const url = VIDEO_URLS[t.id] || "";
+  const url = VIDEO_URLS[t.id];
+
   pvTitle.textContent = t.title;
   pvSub.textContent = `${t.ratio} • ${t.style} • ${t.duration}`;
 
-  if (!url) {
-    pvVideo.removeAttribute("src");
-    pvVideo.load();
-    pvOpen.href = "#";
-    pvOpen.classList.add("disabled");
-    pvOpen.textContent = "MP4 chưa gắn";
-    toast("Chưa có link MP4 — bạn gắn vào VIDEO_URLS (app.js)");
-  } else {
-    pvVideo.src = url;
-    pvVideo.load();
-    pvOpen.href = url;
-    pvOpen.classList.remove("disabled");
-    pvOpen.textContent = "Open MP4";
-  }
+  pvVideo.src = url;
+  pvVideo.load();
+
+  pvOpen.href = url;
+  pvOpen.textContent = "Open MP4";
 
   modal.classList.add("show");
   modal.setAttribute("aria-hidden", "false");
@@ -245,9 +315,10 @@ function closeModal() {
 
 // ---------- Helpers ----------
 function toast(msg) {
+  // Minimal toast: no hints, no guidance
   toastEl.textContent = msg;
   toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), 2200);
+  setTimeout(() => toastEl.classList.remove("show"), 1600);
 }
 
 function escapeHtml(s="") {
