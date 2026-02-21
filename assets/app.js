@@ -1,23 +1,19 @@
 // web/assets/app.js
-// Trending demo UI (AdbPad-like) — no settings, no hints, one-click preview
+// Trending demo UI (AdbPad-like) — 100% remote URLs — no hints
 
-// Local videos folder on GitHub Pages:
-// Put your 8 local mp4 files into: web/videos/
-const LOCAL_BASE = "./videos/";
+// ✅ All remote URLs (you provided list; SND items are mapped to guerin host)
+const PROVIDED_URLS = [
+  // SND -> mapped to remote host (same folder)
+  "https://guerin.acequia.io/ai/BethGulfofMexico.mp4",
+  "https://guerin.acequia.io/ai/Breecker-crane-over-head-with-LOTR-Nazgul.mp4",
+  "https://guerin.acequia.io/ai/breecker-dolly-left-swipe-in-person.mp4",
+  "https://guerin.acequia.io/ai/ed-angel-gorilla-2.mp4",
+  "https://guerin.acequia.io/ai/ed-angel-gorilla.mp4",
+  "https://guerin.acequia.io/ai/errand-missed-catch.mp4",
+  "https://guerin.acequia.io/ai/Graydon_RxBurn.mp4",
+  "https://guerin.acequia.io/ai/nyc-lateshow-icecream.mp4",
 
-// Provided videos
-const PROVIDED_VIDEOS = [
-  // Local (SND) — stored in web/videos/
-  "[SND]BethGulfofMexico.mp4",
-  "[SND]Breecker-crane-over-head-with-LOTR-Nazgul.mp4",
-  "[SND]breecker-dolly-left-swipe-in-person.mp4",
-  "[SND]ed-angel-gorilla-2.mp4",
-  "[SND]ed-angel-gorilla.mp4",
-  "[SND]errand-missed-catch.mp4",
-  "[SND]Graydon_RxBurn.mp4",
-  "[SND]nyc-lateshow-icecream.mp4",
-
-  // Remote URLs
+  // Remote URLs (as-is)
   "https://guerin.acequia.io/ai/owen-dolly-in-smile.mp4",
   "https://guerin.acequia.io/ai/owen-dolly-right-smile.mp4",
   "https://guerin.acequia.io/ai/plume-bulletcam-partial-fail.mp4",
@@ -31,38 +27,28 @@ const PROVIDED_VIDEOS = [
   "https://guerin.acequia.io/ai/Stu-Stephen-museumHill-ai.mp4"
 ];
 
-// ---- Build a normalized list with URL + meta ----
-function normalizeVideo(item) {
-  if (item.startsWith("[SND]")) {
-    const filename = item.replace("[SND]", "").trim();
-    return {
-      source: "local",
-      filename,
-      url: `${LOCAL_BASE}${encodeURIComponent(filename)}`
-    };
+// --- Utilities ---
+function filenameFromUrl(url) {
+  try {
+    const u = new URL(url);
+    const last = u.pathname.split("/").pop() || "video.mp4";
+    return decodeURIComponent(last);
+  } catch {
+    return "video.mp4";
   }
-  // remote
-  const url = item.trim();
-  const filename = decodeURIComponent(url.split("/").pop() || "video.mp4");
-  return { source: "remote", filename, url };
 }
 
-const VIDEOS = PROVIDED_VIDEOS.map(normalizeVideo);
-
-// ---- Tagging / categorization heuristics (for your new index.html filters) ----
 function baseName(filename) {
   return filename.replace(/\.mp4$/i, "");
 }
 
 function titleFromFilename(filename) {
-  // Make it feel like “trending template cards”
   const name = baseName(filename)
     .replace(/[_-]+/g, " ")
     .replace(/\bai\b/gi, "AI")
     .replace(/\bnyc\b/gi, "NYC")
     .trim();
 
-  // Title case-ish
   return name
     .split(" ")
     .filter(Boolean)
@@ -72,49 +58,50 @@ function titleFromFilename(filename) {
 
 function pickTags(filename) {
   const f = filename.toLowerCase();
+  const tags = new Set(["viral", "shorts"]); // default
 
-  // Primary categories (must match sidebar filters in index.html)
-  const tags = new Set(["viral"]); // default trending feed
-
-  // Motion / cinematic feel
+  // Cinematic / movement
   if (f.includes("dolly") || f.includes("crane") || f.includes("orbit") || f.includes("rotate") || f.includes("bulletcam")) {
     tags.add("cinematic");
   }
 
-  // POV vibes
+  // POV
   if (f.includes("in-person") || f.includes("missed") || f.includes("catch") || f.includes("smile")) {
     tags.add("pov");
   }
 
-  // Tech & AI vibe
+  // Tech & AI
   if (f.includes("ai") || f.includes("bulletcam")) {
     tags.add("tech");
   }
 
   // Aesthetic / lifestyle
-  if (f.includes("nyc") || f.includes("icecream") || f.includes("beth") || f.includes("gulf") || f.includes("museum") || f.includes("sunset")) {
+  if (f.includes("nyc") || f.includes("icecream") || f.includes("beth") || f.includes("gulf") || f.includes("museum")) {
     tags.add("aesthetic");
   }
 
-  // Community / reactions
+  // Community / reaction
   if (f.includes("thumbs-up") || f.includes("toast") || f.includes("smile")) {
     tags.add("community");
   }
 
-  // Business/Affiliate/Local/Food — map lightly based on words (can expand later)
+  // Food & Local
   if (f.includes("icecream")) tags.add("food");
   if (f.includes("nyc") || f.includes("museum")) tags.add("local");
 
-  // Secondary feed tabs in index.html
-  tags.add("shorts"); // all are short clips style
+  // Business/Affiliate/Tutorial: keep available as categories (you can tune later)
+  // For now, lightweight mapping:
+  if (f.includes("toast") || f.includes("thumbs-up")) tags.add("business");
+  if (f.includes("icecream")) tags.add("affiliate"); // “product-like” demo
+  if (f.includes("partial-fail")) tags.add("tutorial"); // “how-to” vibe (fail case)
 
-  // Optional: affiliate-ready for “product-like” clips (you can refine later)
-  // tags.add("affiliate");
+  // Deals tab (light mapping)
+  if (f.includes("icecream") || f.includes("thumbs-up")) tags.add("deals");
 
   return Array.from(tags);
 }
 
-function shortDesc(filename, source) {
+function shortDesc(filename) {
   const f = filename.toLowerCase();
   const motion =
     f.includes("dolly") ? "Dolly shot" :
@@ -135,25 +122,25 @@ function shortDesc(filename, source) {
     f.includes("burn") ? "Action vibe" :
     "Viral-ready";
 
-  return `${motion} • ${vibe} • ${source === "local" ? "local" : "cloud"}`;
+  return `${motion} • ${vibe}`;
 }
 
-// ---- Build templates directly from your video list ----
-const TEMPLATES = VIDEOS.map((v, i) => {
+// --- Build templates from your URLs ---
+const TEMPLATES = PROVIDED_URLS.map((url, i) => {
+  const filename = filenameFromUrl(url);
   const id = `tpl_${i + 1}`;
   return {
     id,
-    videoUrl: v.url,
-    title: titleFromFilename(v.filename),
-    desc: shortDesc(v.filename, v.source),
-    tags: pickTags(v.filename),
+    videoUrl: url,
+    title: titleFromFilename(filename),
+    desc: shortDesc(filename),
+    tags: pickTags(filename),
     ratio: "9:16",
-    style: v.source === "local" ? "Local" : "Cloud",
+    style: "Trending",
     duration: "6s"
   };
 });
 
-// Build lookup for video URLs
 const VIDEO_URLS = Object.fromEntries(TEMPLATES.map(t => [t.id, t.videoUrl]));
 
 // ---------- DOM ----------
@@ -181,7 +168,6 @@ modal.addEventListener("click", (e) => {
   if (e.target === modal) closeModal();
 });
 
-// Keyboard support
 window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
   if (modal.classList.contains("show") && (e.key === "ArrowRight" || e.key === "Enter")) {
@@ -228,7 +214,6 @@ function applyFilters() {
   if (activeFilter !== "all") {
     list = list.filter(t => t.tags.includes(activeFilter));
   }
-
   if (activeTab !== "all") {
     list = list.filter(t => t.tags.includes(activeTab));
   }
@@ -298,7 +283,6 @@ function openTemplate(t) {
   pvVideo.load();
 
   pvOpen.href = url;
-  pvOpen.textContent = "Open MP4";
 
   modal.classList.add("show");
   modal.setAttribute("aria-hidden", "false");
@@ -315,10 +299,9 @@ function closeModal() {
 
 // ---------- Helpers ----------
 function toast(msg) {
-  // Minimal toast: no hints, no guidance
   toastEl.textContent = msg;
   toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), 1600);
+  setTimeout(() => toastEl.classList.remove("show"), 1300);
 }
 
 function escapeHtml(s="") {
