@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Video Agent MVP</title>
+  <link rel="stylesheet" href="./assets/app.css" />
+</head>
+<body>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="burger">≡</div>
+        <div class="title">VideoAgent</div>
+      </div>
+
+      <div class="device">
+        <span class="dot"></span>
+        <span id="deviceName">agent-01</span>
+        <span class="caret">▾</span>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active" data-view="command">Command</button>
+        <button class="nav-item" data-view="templates">Templates</button>
+        <button class="nav-item" data-view="jobs">Jobs</button>
+        <button class="nav-item" data-view="export">Export</button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <button class="nav-item" id="btnSetting" data-view="settings">Setting</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div class="tabs">
+          <button class="tab active">All</button>
+          <button class="tab">Ads</button>
+          <button class="tab">Brand</button>
+          <button class="tab">Communication</button>
+        </div>
+
+        <div class="top-actions">
+          <button class="icon-btn" id="btnAdminToggle" title="Admin (Ctrl+K)">🛠</button>
+          <button class="icon-btn" id="btnRefresh" title="Refresh">⟳</button>
+        </div>
+      </header>
+
+      <section class="grid" id="grid"></section>
+
+      <section class="panel">
+        <div class="panel-title">Recent Jobs</div>
+        <div class="jobs" id="jobs"></div>
+      </section>
+    </main>
+  </div>
+
+  <!-- ADMIN DRAWER -->
+  <div class="drawer" id="adminDrawer" aria-hidden="true">
+    <div class="drawer-inner">
+      <div class="drawer-head">
+        <div>
+          <div class="drawer-title">Admin Panel</div>
+          <div class="drawer-sub">Complete jobs without curl</div>
+        </div>
+        <button class="icon-btn" id="btnAdminClose" title="Close">✕</button>
+      </div>
+
+      <div class="form">
+        <label class="label">Worker API Base</label>
+        <input class="input" id="adminApiBase" placeholder="https://xxx.workers.dev" />
+
+        <label class="label">Admin Token (Bearer)</label>
+        <input class="input" id="adminToken" placeholder="Paste ADMIN_TOKEN here" />
+
+        <div class="row">
+          <button class="btn primary" id="btnSaveAdmin">Save</button>
+          <button class="btn ghost" id="btnClearAdmin">Clear</button>
+          <span class="hint" id="adminStatus">locked</span>
+        </div>
+
+        <div class="divider"></div>
+
+        <div class="mini">
+          <div class="mini-title">Quick Complete</div>
+          <div class="mini-sub">Paste Job ID + Video URL</div>
+
+          <label class="label">Job ID</label>
+          <input class="input" id="qJobId" placeholder="job_..." />
+
+          <label class="label">Video URL</label>
+          <input class="input" id="qVideoUrl" placeholder="https://.../video.mp4" />
+
+          <label class="label">Thumb URL (optional)</label>
+          <input class="input" id="qThumbUrl" placeholder="https://.../thumb.jpg" />
+
+          <div class="row">
+            <button class="btn primary" id="btnQuickComplete">Complete</button>
+            <button class="btn ghost" id="btnQuickStart">Start</button>
+            <button class="btn danger" id="btnQuickFail">Fail</button>
+          </div>
+
+          <label class="label">Fail reason (optional)</label>
+          <input class="input" id="qFailReason" placeholder="e.g. seedance_error" />
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast" aria-live="polite"></div>
+
+  <script src="./assets/app.js"></script>
+</body>
+</html>
