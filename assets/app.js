@@ -1,19 +1,12 @@
 // web/assets/app.js
-// Trending demo UI (AdbPad-like) — 100% remote URLs — no hints
+// Guaranteed content per category + trending titles + prompt suggestions
+// 100% remote mp4 URLs
 
-// ✅ All remote URLs (you provided list; SND items are mapped to guerin host)
-const PROVIDED_URLS = [
-  // SND -> mapped to remote host (same folder)
-  "https://guerin.acequia.io/ai/BethGulfofMexico.mp4",
-  "https://guerin.acequia.io/ai/Breecker-crane-over-head-with-LOTR-Nazgul.mp4",
-  "https://guerin.acequia.io/ai/breecker-dolly-left-swipe-in-person.mp4",
-  "https://guerin.acequia.io/ai/ed-angel-gorilla-2.mp4",
-  "https://guerin.acequia.io/ai/ed-angel-gorilla.mp4",
-  "https://guerin.acequia.io/ai/errand-missed-catch.mp4",
-  "https://guerin.acequia.io/ai/Graydon_RxBurn.mp4",
-  "https://guerin.acequia.io/ai/nyc-lateshow-icecream.mp4",
+// If your SND files are hosted elsewhere, change this base:
+const SND_BASE = "https://guerin.acequia.io/ai/";
 
-  // Remote URLs (as-is)
+// Original list you gave (some are file names, some are full URLs)
+const RAW_LIST = [
   "https://guerin.acequia.io/ai/owen-dolly-in-smile.mp4",
   "https://guerin.acequia.io/ai/owen-dolly-right-smile.mp4",
   "https://guerin.acequia.io/ai/plume-bulletcam-partial-fail.mp4",
@@ -27,7 +20,17 @@ const PROVIDED_URLS = [
   "https://guerin.acequia.io/ai/Stu-Stephen-museumHill-ai.mp4"
 ];
 
-// --- Utilities ---
+function normalizeToUrl(item) {
+  const s = item.trim();
+  if (s.startsWith("[SND]")) {
+    const filename = s.replace("[SND]", "").trim();
+    return `${SND_BASE}${encodeURIComponent(filename)}`;
+  }
+  return s;
+}
+
+const URLS = RAW_LIST.map(normalizeToUrl);
+
 function filenameFromUrl(url) {
   try {
     const u = new URL(url);
@@ -38,110 +41,132 @@ function filenameFromUrl(url) {
   }
 }
 
-function baseName(filename) {
-  return filename.replace(/\.mp4$/i, "");
+function slugify(s) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
 }
 
-function titleFromFilename(filename) {
-  const name = baseName(filename)
-    .replace(/[_-]+/g, " ")
-    .replace(/\bai\b/gi, "AI")
-    .replace(/\bnyc\b/gi, "NYC")
-    .trim();
-
+function humanTitle(filename) {
+  const name = filename.replace(/\.mp4$/i, "").replace(/[_-]+/g, " ").trim();
   return name
     .split(" ")
     .filter(Boolean)
-    .map(w => w.length <= 2 ? w.toUpperCase() : w[0].toUpperCase() + w.slice(1))
+    .map(w => w.length <= 2 ? w.toUpperCase() : (w[0].toUpperCase() + w.slice(1)))
     .join(" ");
 }
 
-function pickTags(filename) {
+// ---- Trend labels + prompts ----
+const PROMPT_BANK = {
+  viral: [
+    "Hook 0–1s bằng text giật tít: 'Bạn sẽ bất ngờ vì điều này…' + quick zoom, high contrast, upbeat cut.",
+    "POV tình huống đời thường, text ngắn 5–7 từ, nhịp cắt nhanh, nhấn reaction cuối clip.",
+    "Loop mượt (end frame match start), thêm sound cue nhẹ để tăng rewatch."
+  ],
+  business: [
+    "Quảng cáo local business: 3 shot (establish → product/service → CTA), overlay giá/ưu đãi, logo nhỏ góc dưới.",
+    "Social proof: review 1 câu + 3 bullet lợi ích + CTA 'Inbox nhận ưu đãi'.",
+    "Story brand: trước/sau + con số cụ thể (vd: 'giảm 70% rủi ro')."
+  ],
+  affiliate: [
+    "Affiliate template: 'Top 3 món đáng mua tuần này' + on-screen price + CTA 'link bio'.",
+    "Before/After: 'đắt vs đáng' + 2 cảnh so sánh + 1 câu kết chốt mua.",
+    "Deal countdown: 10s, 3 mốc thời gian, chữ lớn dễ đọc trên mobile."
+  ],
+  aesthetic: [
+    "Aesthetic cinematic: ánh sáng mềm, motion chậm, color grading nhẹ, chữ tối giản.",
+    "Travel vibe: establishing wide → medium → close-up texture, nhạc chill, cảm giác 'muốn đi ngay'.",
+    "Golden hour: flare nhẹ, bokeh, slow pan, text 1 dòng."
+  ],
+  tech: [
+    "Tech/AI vibe: UI overlay, scan lines, neon accent nhẹ, highlight keyword (AI / Auto / Score).",
+    "Explainer nhanh: 1 câu vấn đề → 1 câu giải pháp → 1 CTA 'Try now'.",
+    "Cyber trailer: warning card, risk score, icon shield, kết thúc bằng hotline."
+  ],
+  tutorial: [
+    "How-to 3 bước: Step 1/2/3 xuất hiện rõ, mỗi bước 1–2s, chữ to.",
+    "Before/After kèm checklist: 'Bật/Tắt' + icon tick/cross, kết thúc bằng 'làm ngay'.",
+    "Fail case → fix: show lỗi 1s rồi chuyển sang giải pháp 4s."
+  ],
+  food: [
+    "Food close-up: macro texture, steam/sizzle, text 'must try' + địa điểm.",
+    "Menu highlight: 3 món signature, giá/ưu đãi, CTA 'đặt bàn'.",
+    "Street vibe: handheld nhẹ, cut nhanh, nhạc vui."
+  ],
+  community: [
+    "Reaction: 'Bạn chọn cái nào?' + 2 lựa chọn, cuối clip hỏi comment.",
+    "Duet-ready: để khoảng trống bên trái cho người duet, text câu hỏi.",
+    "Challenge: hashtag + rule 1 dòng + call-to-action tham gia."
+  ]
+};
+
+// Ensure every category always has content:
+// We'll assign each URL into multiple categories by rotation to guarantee filters always return videos.
+const CATEGORIES = ["viral","business","affiliate","aesthetic","tech","tutorial","food","community"];
+
+// Additional tags for top tabs
+const TAB_TAGS = ["shorts","pov","cinematic","deals","local"];
+
+function buildTags(filename, idx, category) {
   const f = filename.toLowerCase();
-  const tags = new Set(["viral", "shorts"]); // default
+  const tags = new Set([category, "shorts"]); // always shorts
 
-  // Cinematic / movement
-  if (f.includes("dolly") || f.includes("crane") || f.includes("orbit") || f.includes("rotate") || f.includes("bulletcam")) {
-    tags.add("cinematic");
-  }
+  // some deterministic variety so each tab also gets content
+  if (idx % 2 === 0) tags.add("cinematic");
+  if (idx % 3 === 0) tags.add("pov");
+  if (idx % 4 === 0) tags.add("local");
+  if (idx % 5 === 0) tags.add("deals");
 
-  // POV
-  if (f.includes("in-person") || f.includes("missed") || f.includes("catch") || f.includes("smile")) {
-    tags.add("pov");
-  }
-
-  // Tech & AI
-  if (f.includes("ai") || f.includes("bulletcam")) {
-    tags.add("tech");
-  }
-
-  // Aesthetic / lifestyle
-  if (f.includes("nyc") || f.includes("icecream") || f.includes("beth") || f.includes("gulf") || f.includes("museum")) {
-    tags.add("aesthetic");
-  }
-
-  // Community / reaction
-  if (f.includes("thumbs-up") || f.includes("toast") || f.includes("smile")) {
-    tags.add("community");
-  }
-
-  // Food & Local
-  if (f.includes("icecream")) tags.add("food");
+  // add some content-aware hints
+  if (f.includes("dolly") || f.includes("crane") || f.includes("orbit") || f.includes("rotate")) tags.add("cinematic");
+  if (f.includes("smile") || f.includes("thumbs-up") || f.includes("toast")) tags.add("pov");
   if (f.includes("nyc") || f.includes("museum")) tags.add("local");
+  if (f.includes("icecream")) tags.add("food"), tags.add("deals"), tags.add("affiliate");
 
-  // Business/Affiliate/Tutorial: keep available as categories (you can tune later)
-  // For now, lightweight mapping:
-  if (f.includes("toast") || f.includes("thumbs-up")) tags.add("business");
-  if (f.includes("icecream")) tags.add("affiliate"); // “product-like” demo
-  if (f.includes("partial-fail")) tags.add("tutorial"); // “how-to” vibe (fail case)
-
-  // Deals tab (light mapping)
-  if (f.includes("icecream") || f.includes("thumbs-up")) tags.add("deals");
+  // ALSO add viral always to keep exploration fun
+  tags.add("viral");
 
   return Array.from(tags);
 }
 
-function shortDesc(filename) {
-  const f = filename.toLowerCase();
-  const motion =
-    f.includes("dolly") ? "Dolly shot" :
-    f.includes("crane") ? "Crane overhead" :
-    f.includes("orbit") ? "Orbit camera" :
-    f.includes("rotate") ? "Rotate move" :
-    f.includes("bulletcam") ? "Bullet-cam" :
-    "Trending clip";
-
-  const vibe =
-    f.includes("nazgul") ? "Fantasy vibe" :
-    f.includes("gorilla") ? "Surreal creature" :
-    f.includes("icecream") ? "Street snack vibe" :
-    f.includes("thumbs-up") ? "Reaction-friendly" :
-    f.includes("toast") ? "Social moment" :
-    f.includes("museum") ? "Aesthetic travel" :
-    f.includes("smile") ? "Feel-good" :
-    f.includes("burn") ? "Action vibe" :
-    "Viral-ready";
-
-  return `${motion} • ${vibe}`;
+function pickPrompt(category, filename) {
+  const pool = PROMPT_BANK[category] || PROMPT_BANK.viral;
+  // deterministic pick by filename hash-ish
+  const n = Array.from(filename).reduce((a,c)=>a+c.charCodeAt(0), 0);
+  return pool[n % pool.length];
 }
 
-// --- Build templates from your URLs ---
-const TEMPLATES = PROVIDED_URLS.map((url, i) => {
+function buildDesc(category, filename) {
+  const map = {
+    viral: "Hook mạnh 0–2s • loop mượt • dễ viral",
+    business: "Quảng cáo nhanh • rõ lợi ích • có CTA",
+    affiliate: "Gắn link bio • chốt mua nhanh • deals",
+    aesthetic: "Chill đẹp • cinematic • minimal text",
+    tech: "AI/Tech vibe • UI overlay • scan effect",
+    tutorial: "How-to 3 bước • dễ hiểu • nhanh gọn",
+    food: "Ngon mắt • texture • địa điểm rõ",
+    community: "Kêu gọi comment • reaction • duet-ready"
+  };
+  const base = map[category] || "Trending template";
+  return `${base} • ${humanTitle(filename)}`;
+}
+
+// Build templates: rotate primary category so every filter always has items.
+const TEMPLATES = URLS.map((url, i) => {
   const filename = filenameFromUrl(url);
-  const id = `tpl_${i + 1}`;
+  const category = CATEGORIES[i % CATEGORIES.length];
+  const id = `tpl_${i + 1}_${slugify(filename.replace(/\.mp4$/i,""))}`;
+
   return {
     id,
     videoUrl: url,
-    title: titleFromFilename(filename),
-    desc: shortDesc(filename),
-    tags: pickTags(filename),
+    title: `${humanTitle(filename)} — ${category.toUpperCase()}`,
+    desc: buildDesc(category, filename),
+    tags: buildTags(filename, i, category),
     ratio: "9:16",
     style: "Trending",
-    duration: "6s"
+    duration: "6–10s",
+    prompt: pickPrompt(category, filename)
   };
 });
-
-const VIDEO_URLS = Object.fromEntries(TEMPLATES.map(t => [t.id, t.videoUrl]));
 
 // ---------- DOM ----------
 const grid = document.getElementById("grid");
@@ -156,6 +181,8 @@ const pvSub = document.getElementById("pvSub");
 const pvVideo = document.getElementById("pvVideo");
 const pvOpen = document.getElementById("pvOpen");
 const pvNext = document.getElementById("pvNext");
+const pvPrompt = document.getElementById("pvPrompt");
+const btnCopyPrompt = document.getElementById("btnCopyPrompt");
 
 document.getElementById("btnShuffle").addEventListener("click", () => {
   currentList = shuffle([...currentList]);
@@ -172,6 +199,16 @@ window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
   if (modal.classList.contains("show") && (e.key === "ArrowRight" || e.key === "Enter")) {
     pvNext.click();
+  }
+});
+
+btnCopyPrompt.addEventListener("click", async () => {
+  const text = pvPrompt.textContent || "";
+  try {
+    await navigator.clipboard.writeText(text);
+    toast("Copied");
+  } catch {
+    toast("Copy failed");
   }
 });
 
@@ -207,7 +244,7 @@ pvNext.addEventListener("click", () => {
   openTemplate(currentList[currentIndex]);
 });
 
-// ---------- Render ----------
+// ---------- Filtering (guarantee non-empty) ----------
 function applyFilters() {
   let list = [...TEMPLATES];
 
@@ -216,6 +253,17 @@ function applyFilters() {
   }
   if (activeTab !== "all") {
     list = list.filter(t => t.tags.includes(activeTab));
+  }
+
+  // Guarantee: if somehow empty, fallback to a curated selection for that category/tab.
+  if (!list.length) {
+    if (activeFilter !== "all") {
+      list = TEMPLATES.filter(t => t.tags.includes(activeFilter));
+    }
+    if (!list.length && activeTab !== "all") {
+      list = TEMPLATES.filter(t => t.tags.includes(activeTab));
+    }
+    if (!list.length) list = [...TEMPLATES];
   }
 
   currentList = list;
@@ -230,7 +278,7 @@ function renderGrid(list) {
   if (!list.length) {
     const empty = document.createElement("div");
     empty.className = "card";
-    empty.innerHTML = `<h3>No templates</h3><p>Không có mẫu phù hợp filter hiện tại.</p>`;
+    empty.innerHTML = `<h3>No templates</h3><p>Không có mẫu phù hợp.</p>`;
     grid.appendChild(empty);
     return;
   }
@@ -242,12 +290,12 @@ function renderGrid(list) {
       <h3>${escapeHtml(t.title)}</h3>
       <p>${escapeHtml(t.desc)}</p>
       <div class="meta">
-        <span class="pill">${escapeHtml(t.ratio)}</span>
-        <span class="pill">${escapeHtml(t.style)}</span>
+        <span class="pill">${escapeHtml(activePrimaryTag(t))}</span>
+        <span class="pill">${escapeHtml(pickBadge(t))}</span>
         <span class="pill">${escapeHtml(t.duration)}</span>
       </div>
       <div class="run">
-        <span class="status">${escapeHtml(t.id)}</span>
+        <span class="status">${escapeHtml(shortId(t.id))}</span>
         <button class="btn ghost" data-open="${t.id}">Preview</button>
         <button class="btn primary" data-run="${t.id}">Run</button>
       </div>
@@ -274,15 +322,14 @@ function runTemplate(t) {
 }
 
 function openTemplate(t) {
-  const url = VIDEO_URLS[t.id];
-
   pvTitle.textContent = t.title;
   pvSub.textContent = `${t.ratio} • ${t.style} • ${t.duration}`;
+  pvPrompt.textContent = t.prompt || "";
 
-  pvVideo.src = url;
+  pvVideo.src = t.videoUrl;
   pvVideo.load();
 
-  pvOpen.href = url;
+  pvOpen.href = t.videoUrl;
 
   modal.classList.add("show");
   modal.setAttribute("aria-hidden", "false");
@@ -316,6 +363,28 @@ function shuffle(arr) {
     [arr[i], arr[j]] = [arr[j], arr[i]];
   }
   return arr;
+}
+
+function shortId(id) {
+  // keep it compact on UI
+  const parts = id.split("_");
+  return parts.slice(0, 2).join("_"); // tpl_#
+}
+
+function activePrimaryTag(t) {
+  // show a meaningful category pill
+  const priority = ["viral","affiliate","business","aesthetic","tech","tutorial","food","community"];
+  for (const p of priority) if (t.tags.includes(p)) return p.toUpperCase();
+  return "TREND";
+}
+
+function pickBadge(t) {
+  // show a second pill as “mode”
+  if (t.tags.includes("cinematic")) return "CINEMATIC";
+  if (t.tags.includes("pov")) return "POV";
+  if (t.tags.includes("deals")) return "DEALS";
+  if (t.tags.includes("local")) return "LOCAL";
+  return "SHORTS";
 }
 
 // Boot
