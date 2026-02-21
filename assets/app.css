@@ -8,9 +8,8 @@
   --shadow: 0 10px 30px rgba(0,0,0,.35);
   --radius:14px;
 
-  /* TikTok-ish accent */
   --accent:#ffffff;
-  --accentDim: rgba(255,255,255,.65);
+  --accentDim: rgba(255,255,255,.70);
   --glass: rgba(13,18,26,.55);
 }
 
@@ -53,7 +52,6 @@ body{
 .dot{width:8px;height:8px;border-radius:50%;background:#61ffb1;box-shadow:0 0 12px rgba(97,255,177,.35)}
 .caret{margin-left:auto;color:var(--muted)}
 
-/* Category nav: bigger + friendlier */
 .nav-title{
   font-weight: 900;
   font-size: 12px;
@@ -140,7 +138,7 @@ body{
 
 .seg{
   padding:8px 12px;
-  border-radius:12px;
+  border-radius:999px;
   border:1px solid var(--border);
   background: rgba(255,255,255,.02);
   color: var(--muted);
@@ -155,7 +153,7 @@ body{
 
 .icon-btn{
   width:36px;height:36px;
-  border-radius:12px;
+  border-radius:999px;
   border:1px solid var(--border);
   background:rgba(255,255,255,.02);
   color:var(--text);
@@ -168,6 +166,7 @@ body{
   border-radius:14px;
   background: rgba(255,255,255,.02);
   overflow:hidden;
+  position:relative;
 }
 .feed-hint{
   padding:10px 12px;
@@ -204,7 +203,7 @@ body{
   position:relative;
   box-shadow: var(--shadow);
 }
-.feed-frame img, .feed-frame video{
+.feed-frame img{
   width:100%; height:100%;
   object-fit: cover;
   display:block;
@@ -479,78 +478,92 @@ body{
   flex-wrap:wrap;
 }
 
-/* ✅ MOBILE: FULLSCREEN MODAL (TikTok-like, iOS safe) */
+/* ✅ Mobile overlay TikTok-like */
+.mobile-overlay{
+  display:none;
+}
+
 @media (max-width: 760px){
-  /* ✅ TikTok-like TOPBAR: sticky + glass */
-  .topbar{
+  /* Hide desktop topbar (TikTok style uses overlay) */
+  .topbar{ display:none; }
+
+  /* Overlay appears inside feed */
+  .mobile-overlay{
+    display:block;
     position: sticky;
     top: 0;
-    z-index: 20;
-    border-radius: 0;
-    border-left: none;
-    border-right: none;
-    border-top: none;
-    padding: 10px 12px 6px;
-    background: var(--glass);
+    z-index: 30;
+    padding-top: env(safe-area-inset-top);
+    background: linear-gradient(to bottom, rgba(0,0,0,.72), rgba(0,0,0,.25), rgba(0,0,0,0));
     backdrop-filter: blur(14px);
     -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 14px 40px rgba(0,0,0,.35);
-    flex-direction: column;
-    align-items: stretch;
-    gap: 10px;
+    border-bottom: 1px solid rgba(255,255,255,.06);
   }
 
-  /* ✅ ForYou/Following row: centered vibe */
-  .top-actions{
-    order: -1;
-    justify-content: center;
-    gap: 10px;
-  }
-  .seg{
-    border-radius: 999px;
-    padding: 10px 16px;
-    min-width: 120px;
-    font-size: 14px;
-    background: rgba(255,255,255,.06);
-  }
-  .seg.active{
-    background: rgba(255,255,255,.12);
-    border-color: rgba(255,255,255,.18);
-    color: var(--accent);
-  }
-
-  /* ✅ TikTok-like category tabs: one horizontal scroll row + underline active */
-  .tabs{
-    order: 1;
+  .overlay-row{
     display:flex;
-    flex-wrap: nowrap;
-    gap: 18px;
-    overflow-x: auto;
-    overflow-y: hidden;
-    padding: 2px 4px 8px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding: 10px 12px 6px;
   }
-  .tabs::-webkit-scrollbar{ display:none; }
 
-  .tab{
+  .overlay-segs{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    justify-content:center;
+    width: 100%;
+  }
+
+  .seg.mini{
+    padding: 10px 14px;
+    min-width: 110px;
+    font-size: 14px;
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.10);
+    color: rgba(255,255,255,.75);
+  }
+  .seg.mini.active{
+    background: rgba(255,255,255,.14);
+    border-color: rgba(255,255,255,.18);
+    color: #fff;
+  }
+  .icon-btn.mini{
+    width: 42px;
+    height: 42px;
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.10);
+    flex: 0 0 auto;
+  }
+
+  .overlay-tabs{
+    display:flex;
+    gap: 18px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    padding: 4px 12px 10px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width:none;
+  }
+  .overlay-tabs::-webkit-scrollbar{ display:none; }
+
+  .otab{
     background: transparent;
     border: none;
     padding: 6px 2px;
     border-radius: 0;
     color: var(--accentDim);
-    font-weight: 800;
+    font-weight: 900;
     font-size: 15px;
     position: relative;
     white-space: nowrap;
     opacity: .95;
   }
-  .tab.active{
+  .otab.active{
     color: var(--accent);
-    background: transparent;
-    border: none;
   }
-  .tab.active::after{
+  .otab.active::after{
     content:"";
     position:absolute;
     left: 0;
@@ -562,11 +575,12 @@ body{
     opacity: .95;
   }
 
-  .icon-btn{
-    width: 42px;
-    height: 42px;
-    border-radius: 999px;
-    background: rgba(255,255,255,.06);
+  /* feed hint off on mobile (overlay replaces it) */
+  .feed-hint{ display:none; }
+
+  /* make feed content start below overlay */
+  .feed-list{
+    height: 76vh;
   }
 
   /* modal fullscreen */
