@@ -2,156 +2,76 @@
 <html lang="vi">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Video Agent — For You</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <title>Video Feed — For You</title>
   <link rel="stylesheet" href="./assets/app.css" />
 </head>
 <body>
-  <div class="shell">
-    <aside class="sidebar">
-      <div class="brand">
-        <div class="burger">≡</div>
-        <div class="title">VideoAgent</div>
+  <div id="app" class="app">
+    <!-- TOP HEADER (VideoGPT-like) -->
+    <header class="topbar">
+      <div class="top-left">
+        <div class="logo">
+          <span class="logo-dot"></span>
+          <span class="logo-text">VideoGPT</span>
+        </div>
       </div>
 
-      <div class="device">
-        <span class="dot"></span>
-        <span id="deviceName">trend-feed</span>
-        <span class="caret">▾</span>
+      <div class="top-right">
+        <button class="top-icon" id="btnCreate" title="Create">
+          <!-- wand -->
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 2l2 2-5 5-2-2 5-5zm10.5 6.5l4 4-9.5 9.5-4-4L17.5 8.5zM14 6l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="top-icon" id="btnMenu" title="Menu">
+          <!-- menu -->
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+        </button>
       </div>
+    </header>
 
-      <div class="nav-title">Danh mục HOT</div>
-      <nav class="nav">
-        <button class="nav-item active" data-filter="all">
-          <span class="nav-ico">🔥</span><span class="nav-txt">Khám phá tất cả</span>
-        </button>
-        <button class="nav-item" data-filter="viral">
-          <span class="nav-ico">🚀</span><span class="nav-txt">Viral & Social</span>
-        </button>
-        <button class="nav-item" data-filter="business">
-          <span class="nav-ico">💼</span><span class="nav-txt">Business & Marketing</span>
-        </button>
-        <button class="nav-item" data-filter="affiliate">
-          <span class="nav-ico">💰</span><span class="nav-txt">Affiliate Ready</span>
-        </button>
-        <button class="nav-item" data-filter="aesthetic">
-          <span class="nav-ico">🎨</span><span class="nav-txt">Lifestyle & Aesthetic</span>
-        </button>
-        <button class="nav-item" data-filter="tech">
-          <span class="nav-ico">🧠</span><span class="nav-txt">Tech & AI</span>
-        </button>
-        <button class="nav-item" data-filter="tutorial">
-          <span class="nav-ico">🛠</span><span class="nav-txt">Tutorials & How-To</span>
-        </button>
-        <button class="nav-item" data-filter="food">
-          <span class="nav-ico">🍽</span><span class="nav-txt">Food & Local</span>
-        </button>
-        <button class="nav-item" data-filter="community">
-          <span class="nav-ico">📍</span><span class="nav-txt">Challenges & Community</span>
-        </button>
-      </nav>
-
-      <div class="sidebar-footer">
-        <div class="muted small">Poster • Hover preview • For You feed • Mobile fullscreen</div>
-      </div>
-    </aside>
-
-    <main class="main">
-      <header class="topbar">
-        <div class="tabs" id="tabsBar">
-          <button class="tab active" data-tab="all">All</button>
-          <button class="tab" data-tab="shorts">Shorts</button>
-          <button class="tab" data-tab="pov">POV</button>
-          <button class="tab" data-tab="cinematic">Cinematic</button>
-          <button class="tab" data-tab="deals">Deals</button>
-          <button class="tab" data-tab="local">Local</button>
-        </div>
-
-        <div class="top-actions">
-          <button class="seg active" id="btnForYou">For You</button>
-          <button class="seg" id="btnFollowing">Following</button>
-          <button class="icon-btn" id="btnShuffle" title="Shuffle">⟳</button>
-        </div>
-      </header>
-
-      <section class="feed" id="feed" aria-label="For You feed">
-        <!-- ✅ TikTok-like overlay (mobile only) -->
-        <div class="mobile-overlay" id="mobileOverlay" aria-hidden="true">
-          <div class="overlay-row">
-            <div class="overlay-segs">
-              <button class="seg mini active" id="mForYou">For You</button>
-              <button class="seg mini" id="mFollowing">Following</button>
-            </div>
-
-            <button class="icon-btn mini" id="mShuffle" title="Shuffle">⟳</button>
-          </div>
-
-          <div class="overlay-tabs" id="overlayTabs">
-            <button class="otab active" data-tab="all">All</button>
-            <button class="otab" data-tab="shorts">Shorts</button>
-            <button class="otab" data-tab="pov">POV</button>
-            <button class="otab" data-tab="cinematic">Cinematic</button>
-            <button class="otab" data-tab="deals">Deals</button>
-            <button class="otab" data-tab="local">Local</button>
-          </div>
-        </div>
-
-        <div class="feed-hint muted" id="feedHint">Scroll để lướt • Click để xem</div>
-        <div class="feed-list" id="feedList"></div>
-      </section>
-
-      <section class="grid" id="grid"></section>
-
-      <section class="panel">
-        <div class="panel-title">Console</div>
-        <div class="console">
-          <div class="line"><span class="k">Mode:</span> <span id="consoleMode" class="v">for_you</span></div>
-          <div class="line"><span class="k">Status:</span> <span id="consoleStatus" class="v">ready</span></div>
-          <div class="line"><span class="k">Selected:</span> <span id="consoleSelected" class="v">none</span></div>
-        </div>
-      </section>
+    <!-- FEED -->
+    <main class="feed" id="feed" aria-label="For You Feed">
+      <!-- Slides injected by JS -->
     </main>
-  </div>
 
-  <!-- PREVIEW MODAL -->
-  <div class="modal" id="previewModal" aria-hidden="true">
-    <div class="modal-inner">
-      <div class="modal-head">
-        <div class="modal-head-left">
-          <div class="modal-title" id="pvTitle">Preview</div>
-          <div class="modal-sub" id="pvSub">MP4 preview</div>
-        </div>
-        <div class="modal-head-right">
-          <div class="mini-proof" id="pvProof"></div>
-          <button class="icon-btn" id="btnCloseModal" title="Close">✕</button>
-        </div>
+    <!-- BOTTOM BAR (optional like in screenshot browser) -->
+    <footer class="bottombar">
+      <button class="bb-btn" id="btnBottomMenu" title="Menu">
+        <svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      </button>
+
+      <div class="bb-pill">
+        <span class="bb-domain">videogpt.io</span>
       </div>
 
-      <div class="video-stage">
-        <div class="video-frame">
-          <video id="pvVideo" playsinline preload="metadata"></video>
+      <button class="bb-btn" id="btnRefresh" title="Refresh">
+        <svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.64-6.36" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M21 3v6h-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </footer>
 
-          <div class="player-actions">
-            <button class="chip" id="btnPlayPause">⏸</button>
-            <button class="chip" id="btnMute">🔇</button>
-            <button class="chip" id="btnUnmute" style="display:none;">🔊</button>
-          </div>
+    <!-- MENU SHEET -->
+    <div class="sheet" id="sheet" aria-hidden="true">
+      <div class="sheet-backdrop" data-close="sheet"></div>
+      <div class="sheet-panel">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">Menu</div>
+
+        <div class="sheet-grid">
+          <button class="sheet-item" id="goForYou">For You</button>
+          <button class="sheet-item" id="goFollowing">Following</button>
+          <button class="sheet-item" id="goShuffle">Shuffle</button>
+          <button class="sheet-item" id="goAbout">About</button>
         </div>
 
-        <div class="prompt-wrap">
-          <div class="prompt-title">Prompt gợi ý</div>
-          <div class="prompt-box" id="pvPrompt"></div>
-          <div class="prompt-actions">
-            <button class="btn ghost" id="btnCopyPrompt">Copy Prompt</button>
-            <button class="btn ghost" id="btnDownload">⬇ Tải Video</button>
-            <button class="btn primary" id="pvNext">Next</button>
-          </div>
+        <div class="sheet-note">
+          Demo UI kiểu Video Feed. Bạn có thể thay logo/text/icon theo brand của bạn.
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="toast" id="toast" aria-live="polite"></div>
+    <!-- TOAST -->
+    <div class="toast" id="toast" aria-live="polite"></div>
+  </div>
 
   <script src="./assets/app.js"></script>
 </body>
