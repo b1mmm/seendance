@@ -120,21 +120,27 @@ body{
   .grid{grid-template-columns:1fr;}
 }
 
+/* Card + hover preview */
 .card{
   padding:14px;
   border-radius: var(--radius);
   border:1px solid var(--border);
   background: rgba(255,255,255,.02);
   box-shadow: var(--shadow);
-  min-height: 170px;
+  min-height: 210px;
   display:flex;
   flex-direction:column;
   gap:10px;
+  position: relative;
+  overflow:hidden;
 }
+
 .card h3{margin:0;font-size:14px}
 .card p{margin:0;color:var(--muted);font-size:12px;line-height:1.35}
+
 .meta{display:flex;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:11px}
 .pill{padding:5px 9px;border:1px solid var(--border);border-radius:999px;background:rgba(0,0,0,.18)}
+
 .run{margin-top:auto;display:flex;justify-content:flex-end;gap:10px;align-items:center;}
 .status{font-size:11px;color:var(--muted);margin-right:auto}
 
@@ -160,6 +166,78 @@ body{
 .k{width:80px;color:var(--muted);font-size:12px}
 .v{font-size:12px}
 
+/* Badges + social proof on cards */
+.badges{
+  display:flex;
+  gap:8px;
+  position:absolute;
+  top:12px;
+  left:12px;
+  z-index: 3;
+  pointer-events:none;
+}
+.badge{
+  font-size:11px;
+  font-weight:900;
+  padding:6px 10px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background: rgba(0,0,0,.35);
+  backdrop-filter: blur(8px);
+}
+.badge.hot{border-color: rgba(255,140,0,.35)}
+.badge.trend{border-color: rgba(111,179,255,.35)}
+.badge.new{border-color: rgba(97,255,177,.35)}
+
+.proof-row{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+  font-size:11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.proof-chip{
+  padding:5px 9px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background: rgba(0,0,0,.18);
+}
+
+/* Hover preview layer (desktop) */
+.hover-preview{
+  position:absolute;
+  inset:0;
+  opacity:0;
+  transition: opacity .18s ease;
+  z-index: 1;
+  pointer-events:none;
+  background: rgba(0,0,0,.35);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.hover-preview .mini-frame{
+  width: 120px;               /* small 9:16 */
+  aspect-ratio: 9 / 16;
+  border-radius: 14px;
+  border:1px solid var(--border);
+  background:#000;
+  overflow:hidden;
+  box-shadow: var(--shadow);
+}
+.hover-preview video{
+  width:100%;
+  height:100%;
+  object-fit: cover;
+  display:block;
+}
+
+.card:hover .hover-preview{ opacity: 1; }
+
+/* Keep content above hover preview */
+.card .card-content{ position:relative; z-index: 2; }
+
 /* Modal */
 .modal{
   position:fixed; inset:0;
@@ -171,7 +249,7 @@ body{
 }
 .modal.show{display:flex}
 .modal-inner{
-  width: 980px;
+  width: 1040px;
   max-width: 94vw;
   background: var(--bg);
   border:1px solid var(--border);
@@ -183,23 +261,57 @@ body{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
   padding: 6px 6px 10px;
 }
+.modal-head-left{display:flex;flex-direction:column;gap:2px}
+.modal-head-right{display:flex;align-items:center;gap:10px}
 .modal-title{font-weight:900}
 .modal-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.mini-proof{
+  display:flex; gap:8px; flex-wrap:wrap;
+  justify-content:flex-end;
+  color: var(--muted);
+  font-size:11px;
+}
+.mini-proof .proof-chip{ background: rgba(255,255,255,.02); }
 
-.video-wrap{
+.video-stage{
+  display:grid;
+  grid-template-columns: 420px 1fr;
+  gap: 12px;
+}
+@media (max-width: 900px){
+  .video-stage{ grid-template-columns: 1fr; }
+}
+
+/* 9:16 frame like VideoGPT */
+.video-frame{
+  width: 100%;
   border:1px solid var(--border);
-  border-radius: 14px;
+  border-radius: 16px;
   background: rgba(255,255,255,.02);
   padding: 10px;
 }
-video{width:100%;height:auto;border-radius: 12px; background: #000}
+.video-frame::before{
+  content:"";
+  display:block;
+  aspect-ratio: 9 / 16;
+}
+.video-frame video{
+  position: relative;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 9 / 16;
+  object-fit: contain; /* show full original */
+  border-radius: 12px;
+  background:#000;
+  margin-top: -100%; /* place over pseudo aspect box */
+}
 
 .prompt-wrap{
-  margin-top: 12px;
   border:1px solid var(--border);
   border-radius: 14px;
   background: rgba(255,255,255,.02);
   padding: 12px;
+  height: fit-content;
 }
 .prompt-title{font-weight:900;font-size:13px;margin-bottom:8px}
 .prompt-box{
