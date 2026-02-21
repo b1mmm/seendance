@@ -1,6 +1,7 @@
 // web/assets/app.js
 // VideoGPT-like: poster thumbnails (frame capture + cache), autoplay modal muted, For You feed + Following
 // Still: categories, tabs, social proof, hot badges, hover preview, 9:16 framing
+// ✅ Copy/Open MP4 replaced by Download Video
 
 const SND_BASE = "https://guerin.acequia.io/ai/";
 
@@ -233,12 +234,10 @@ function setCachedPoster(url, dataUrl){
   }
 }
 
-// Capture a frame at ~0.4s to get a nicer poster
 async function capturePoster(url){
-  // If cross-origin blocks canvas, this will fail (tainted canvas).
   return new Promise((resolve, reject) => {
     const v = document.createElement("video");
-    v.crossOrigin = "anonymous"; // may help if server sends CORS headers
+    v.crossOrigin = "anonymous";
     v.muted = true;
     v.playsInline = true;
     v.preload = "auto";
@@ -257,17 +256,14 @@ async function capturePoster(url){
 
     v.addEventListener("loadeddata", async () => {
       try{
-        // seek
         const target = Math.min(0.4, (v.duration || 1) * 0.1);
         const doShot = () => {
           try{
             const canvas = document.createElement("canvas");
-            // poster wide 16:9 to match card
             const W = 960, H = 540;
             canvas.width = W; canvas.height = H;
             const ctx = canvas.getContext("2d");
 
-            // draw center-crop from video
             const vw = v.videoWidth || 1280;
             const vh = v.videoHeight || 720;
             const srcAR = vw / vh;
@@ -275,11 +271,9 @@ async function capturePoster(url){
 
             let sx=0, sy=0, sw=vw, sh=vh;
             if(srcAR > dstAR){
-              // too wide => crop sides
               sw = Math.floor(vh * dstAR);
               sx = Math.floor((vw - sw)/2);
             }else{
-              // too tall => crop top/bottom
               sh = Math.floor(vw / dstAR);
               sy = Math.floor((vh - sh)/2);
             }
@@ -294,12 +288,10 @@ async function capturePoster(url){
           }
         };
 
-        // If seek supported
         if (!isNaN(v.duration) && v.duration > 0) {
           v.currentTime = target;
           v.addEventListener("seeked", doShot, { once:true });
         } else {
-          // no duration info, just capture immediately
           doShot();
         }
       }catch(err){
@@ -328,13 +320,11 @@ const TEMPLATES = URLS.map((url, i) => {
     desc: tiktokDesc(category, filename),
     tags,
     ratio: "9:16",
-    style: "Trending",
     duration: "6–10s",
     prompt: pickPrompt(category, filename),
     primaryCategory: category,
     social,
-    badge,
-    poster: null
+    badge
   };
 });
 
@@ -351,7 +341,6 @@ const btnCloseModal = document.getElementById("btnCloseModal");
 const pvTitle = document.getElementById("pvTitle");
 const pvSub = document.getElementById("pvSub");
 const pvVideo = document.getElementById("pvVideo");
-const pvOpen = document.getElementById("pvOpen");
 const pvNext = document.getElementById("pvNext");
 const pvPrompt = document.getElementById("pvPrompt");
 const btnCopyPrompt = document.getElementById("btnCopyPrompt");
@@ -360,7 +349,10 @@ const pvProof = document.getElementById("pvProof");
 const btnPlayPause = document.getElementById("btnPlayPause");
 const btnMute = document.getElementById("btnMute");
 const btnUnmute = document.getElementById("btnUnmute");
-const btnCopyLink = document.getElementById("btnCopyLink");
+
+// ✅ Download buttons
+const btnDownload = document.getElementById("btnDownload");
+const btnDownloadChip = document.getElementById("btnDownloadChip");
 
 const btnForYou = document.getElementById("btnForYou");
 const btnFollowing = document.getElementById("btnFollowing");
@@ -383,12 +375,6 @@ window.addEventListener("keydown", (e) => {
 btnCopyPrompt.addEventListener("click", async () => {
   const text = pvPrompt.textContent || "";
   try { await navigator.clipboard.writeText(text); toast("Copied"); }
-  catch { toast("Copy failed"); }
-});
-
-btnCopyLink.addEventListener("click", async () => {
-  const url = pvOpen.href || "";
-  try { await navigator.clipboard.writeText(url); toast("MP4 copied"); }
   catch { toast("Copy failed"); }
 });
 
@@ -430,6 +416,54 @@ btnFollowing.addEventListener("click", () => {
   applyFilters();
 });
 
+// ✅ Download handlers (both buttons call same logic)
+btnDownload.addEventListener("click", () => downloadCurrentVideo());
+btnDownloadChip.addEventListener("click", () => downloadCurrentVideo());
+
+async function downloadCurrentVideo() {
+  const src = pvVideo?.src || "";
+  if (!src) return toast("Chưa có video");
+
+  toast("Đang chuẩn bị tải…");
+
+  try {
+    // Try direct download first (fast path)
+    // Some browsers ignore download for cross-origin; fallback to blob fetch.
+    const direct = document.createElement("a");
+    direct.href = src;
+    direct.download = filenameFromUrl(src) || "video.mp4";
+    direct.rel = "noreferrer";
+    document.body.appendChild(direct);
+    direct.click();
+    direct.remove();
+
+    // If direct path blocked, user still can get a download prompt (depends on iOS).
+    // Provide blob fallback too for higher success:
+    // (Run blob fetch in background right away; if it fails due to CORS, ignore.)
+    try {
+      const res = await fetch(src, { mode: "cors" });
+      if (!res.ok) throw new Error("fetch_not_ok");
+      const blob = await res.blob();
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filenameFromUrl(src) || "video.mp4";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // ignore CORS failures
+    }
+
+    toast("Đang tải…");
+  } catch (e) {
+    console.error(e);
+    toast("Không tải được 😢");
+  }
+}
+
 let activeFilter = "all";
 let activeTab = "all";
 let currentList = [...TEMPLATES];
@@ -466,20 +500,16 @@ pvNext.addEventListener("click", () => {
 function applyFilters() {
   let list = [...TEMPLATES];
 
-  // feed mode influences ordering/selection
   if (feedMode === "following") {
-    // "Following": less chaotic viral; prefer aesthetic/business/tech/tutorial
     list = list.filter(t => !t.tags.includes("affiliate") || t.tags.includes("aesthetic") || t.tags.includes("business"));
     list.sort((a,b) => (b.social.score - a.social.score));
   } else {
-    // "For You": more viral first
     list.sort((a,b) => (b.social.views - a.social.views));
   }
 
   if (activeFilter !== "all") list = list.filter(t => t.tags.includes(activeFilter));
   if (activeTab !== "all") list = list.filter(t => t.tags.includes(activeTab));
 
-  // Guarantee fallback
   if (!list.length) {
     list = [...TEMPLATES];
     if (feedMode === "for_you") list.sort((a,b)=>b.social.views-a.social.views);
@@ -493,14 +523,13 @@ function applyFilters() {
   consoleStatus.textContent = "ready";
   consoleSelected.textContent = list.length ? `${list.length} templates` : "none";
 
-  // start generating posters lazily
   kickPosterJobs(list);
 }
 
-// ---------- Feed render (VideoGPT-like) ----------
+// ---------- Feed render ----------
 function renderFeed(list) {
   feedList.innerHTML = "";
-  const subset = list.slice(0, 24); // keep snappy
+  const subset = list.slice(0, 24);
 
   subset.forEach((t, idx) => {
     const item = document.createElement("div");
@@ -551,21 +580,19 @@ function renderFeed(list) {
       openTemplate(t);
     });
 
-    // Click poster -> open
     item.querySelector(".feed-frame").addEventListener("click", () => {
       currentIndex = idx;
       openTemplate(t);
     });
 
-    // Fill poster now if cached
     const img = item.querySelector(`img[data-poster="${t.id}"]`);
     const cached = getCachedPoster(t.videoUrl);
     if (cached) img.src = cached;
-    else img.src = ""; // will fill by poster jobs
+    else img.src = "";
   });
 }
 
-// ---------- Grid render (gallery) ----------
+// ---------- Grid render ----------
 function renderGrid(list) {
   grid.innerHTML = "";
   const subset = list.slice(0, 36);
@@ -634,12 +661,10 @@ function renderGrid(list) {
       runTemplate(t);
     });
 
-    // Fill poster if cached
     const img = el.querySelector(`img[data-poster="${t.id}"]`);
     const cached = getCachedPoster(t.videoUrl);
     if (cached) img.src = cached;
 
-    // Hover preview (desktop)
     const miniVideo = el.querySelector(".hover-preview video");
     const prefersReduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const isFinePointer = window.matchMedia && window.matchMedia("(pointer: fine)").matches;
@@ -661,19 +686,17 @@ function renderGrid(list) {
   });
 }
 
-// ---------- Poster jobs (lazy + concurrency limit) ----------
+// ---------- Poster jobs ----------
 let posterQueue = [];
 let posterRunning = 0;
 const POSTER_CONCURRENCY = 2;
 
 function kickPosterJobs(list) {
-  // enqueue only items missing cached posters
   const missing = list
     .slice(0, 36)
     .filter(t => !getCachedPoster(t.videoUrl))
     .map(t => t.videoUrl);
 
-  // dedupe
   const seen = new Set(posterQueue);
   missing.forEach(u => { if (!seen.has(u)) posterQueue.push(u); });
 
@@ -687,12 +710,9 @@ function drainPosterQueue() {
     capturePoster(url)
       .then(dataUrl => {
         setCachedPoster(url, dataUrl);
-        // update any <img> whose template uses this url
         updatePostersInDOM(url, dataUrl);
       })
-      .catch(() => {
-        // ignore (CORS-tainted etc.)
-      })
+      .catch(() => {})
       .finally(() => {
         posterRunning--;
         drainPosterQueue();
@@ -701,12 +721,11 @@ function drainPosterQueue() {
 }
 
 function updatePostersInDOM(url, dataUrl) {
-  // Find templates using this url, then update imgs by data-poster=id
   const ids = TEMPLATES.filter(t => t.videoUrl === url).map(t => t.id);
   ids.forEach(id => {
     document.querySelectorAll(`img[data-poster="${CSS.escape(id)}"]`).forEach(img => {
-      if (!img.src) img.src = dataUrl;
-      else if (img.src.startsWith("data:")) img.src = dataUrl;
+      if (!img.src || img.src.startsWith("data:")) img.src = dataUrl;
+      else img.src = dataUrl;
     });
   });
 }
@@ -729,9 +748,6 @@ function openTemplate(t, { autoplay=true } = {}) {
     <span class="proof-chip">📈 ${t.social.score}/100</span>
   `;
 
-  pvOpen.href = t.videoUrl;
-
-  // Auto-play muted like VideoGPT
   pvVideo.src = t.videoUrl;
   pvVideo.muted = true;
   btnMute.style.display = "none";
@@ -745,7 +761,6 @@ function openTemplate(t, { autoplay=true } = {}) {
 
   if (autoplay) {
     pvVideo.play().catch(() => {
-      // some browsers block; keep muted and ready
       btnPlayPause.textContent = "▶";
     });
   }
