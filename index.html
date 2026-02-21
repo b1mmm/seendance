@@ -75,6 +75,27 @@
       </header>
 
       <section class="feed" id="feed" aria-label="For You feed">
+        <!-- ✅ TikTok-like overlay (mobile only) -->
+        <div class="mobile-overlay" id="mobileOverlay" aria-hidden="true">
+          <div class="overlay-row">
+            <div class="overlay-segs">
+              <button class="seg mini active" id="mForYou">For You</button>
+              <button class="seg mini" id="mFollowing">Following</button>
+            </div>
+
+            <button class="icon-btn mini" id="mShuffle" title="Shuffle">⟳</button>
+          </div>
+
+          <div class="overlay-tabs" id="overlayTabs">
+            <button class="otab active" data-tab="all">All</button>
+            <button class="otab" data-tab="shorts">Shorts</button>
+            <button class="otab" data-tab="pov">POV</button>
+            <button class="otab" data-tab="cinematic">Cinematic</button>
+            <button class="otab" data-tab="deals">Deals</button>
+            <button class="otab" data-tab="local">Local</button>
+          </div>
+        </div>
+
         <div class="feed-hint muted" id="feedHint">Scroll để lướt • Click để xem</div>
         <div class="feed-list" id="feedList"></div>
       </section>
