@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Video Agent — VideoGPT-style</title>
+  <title>Video Agent — For You</title>
   <link rel="stylesheet" href="./assets/app.css" />
 </head>
 <body>
@@ -20,20 +20,39 @@
         <span class="caret">▾</span>
       </div>
 
+      <div class="nav-title">Danh mục HOT</div>
       <nav class="nav">
-        <button class="nav-item active" data-filter="all">🔥 Khám phá tất cả</button>
-        <button class="nav-item" data-filter="viral">🚀 Viral & Social</button>
-        <button class="nav-item" data-filter="business">💼 Business & Marketing</button>
-        <button class="nav-item" data-filter="affiliate">💰 Affiliate Ready</button>
-        <button class="nav-item" data-filter="aesthetic">🎨 Lifestyle & Aesthetic</button>
-        <button class="nav-item" data-filter="tech">🧠 Tech & AI</button>
-        <button class="nav-item" data-filter="tutorial">🛠 Tutorials & How-To</button>
-        <button class="nav-item" data-filter="food">🍽 Food & Local</button>
-        <button class="nav-item" data-filter="community">📍 Challenges & Community</button>
+        <button class="nav-item active" data-filter="all">
+          <span class="nav-ico">🔥</span><span class="nav-txt">Khám phá tất cả</span>
+        </button>
+        <button class="nav-item" data-filter="viral">
+          <span class="nav-ico">🚀</span><span class="nav-txt">Viral & Social</span>
+        </button>
+        <button class="nav-item" data-filter="business">
+          <span class="nav-ico">💼</span><span class="nav-txt">Business & Marketing</span>
+        </button>
+        <button class="nav-item" data-filter="affiliate">
+          <span class="nav-ico">💰</span><span class="nav-txt">Affiliate Ready</span>
+        </button>
+        <button class="nav-item" data-filter="aesthetic">
+          <span class="nav-ico">🎨</span><span class="nav-txt">Lifestyle & Aesthetic</span>
+        </button>
+        <button class="nav-item" data-filter="tech">
+          <span class="nav-ico">🧠</span><span class="nav-txt">Tech & AI</span>
+        </button>
+        <button class="nav-item" data-filter="tutorial">
+          <span class="nav-ico">🛠</span><span class="nav-txt">Tutorials & How-To</span>
+        </button>
+        <button class="nav-item" data-filter="food">
+          <span class="nav-ico">🍽</span><span class="nav-txt">Food & Local</span>
+        </button>
+        <button class="nav-item" data-filter="community">
+          <span class="nav-ico">📍</span><span class="nav-txt">Challenges & Community</span>
+        </button>
       </nav>
 
       <div class="sidebar-footer">
-        <div class="muted small">Poster thumbnails • For You feed • Auto-play modal</div>
+        <div class="muted small">Poster • Hover preview • For You feed • Mobile fullscreen</div>
       </div>
     </aside>
 
@@ -55,13 +74,11 @@
         </div>
       </header>
 
-      <!-- FEED (VideoGPT-like) -->
       <section class="feed" id="feed" aria-label="For You feed">
-        <div class="feed-hint muted" id="feedHint">Scroll để lướt • Click card để mở modal</div>
+        <div class="feed-hint muted" id="feedHint">Scroll để lướt • Click để xem</div>
         <div class="feed-list" id="feedList"></div>
       </section>
 
-      <!-- GRID (gallery) -->
       <section class="grid" id="grid"></section>
 
       <section class="panel">
@@ -97,8 +114,6 @@
             <button class="chip" id="btnPlayPause">⏸</button>
             <button class="chip" id="btnMute">🔇</button>
             <button class="chip" id="btnUnmute" style="display:none;">🔊</button>
-            <!-- ✅ Copy MP4 -> Download -->
-            <button class="chip" id="btnDownloadChip">⬇ Tải Video</button>
           </div>
         </div>
 
@@ -107,7 +122,7 @@
           <div class="prompt-box" id="pvPrompt"></div>
           <div class="prompt-actions">
             <button class="btn ghost" id="btnCopyPrompt">Copy Prompt</button>
-            <!-- ✅ Open MP4 -> Download -->
+            <!-- ✅ Only ONE download button -->
             <button class="btn ghost" id="btnDownload">⬇ Tải Video</button>
             <button class="btn primary" id="pvNext">Next</button>
           </div>
@@ -116,7 +131,6 @@
     </div>
   </div>
 
-  <!-- TOAST -->
   <div class="toast" id="toast" aria-live="polite"></div>
 
   <script src="./assets/app.js"></script>
