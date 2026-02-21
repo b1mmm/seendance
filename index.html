@@ -33,7 +33,7 @@
       </nav>
 
       <div class="sidebar-footer">
-        <div class="muted small">One-click • Run để xem video + prompt</div>
+        <div class="muted small">One-click • Run/Preview • Hover để xem nhanh</div>
       </div>
     </aside>
 
@@ -69,24 +69,30 @@
   <div class="modal" id="previewModal" aria-hidden="true">
     <div class="modal-inner">
       <div class="modal-head">
-        <div>
+        <div class="modal-head-left">
           <div class="modal-title" id="pvTitle">Preview</div>
           <div class="modal-sub" id="pvSub">MP4 preview</div>
         </div>
-        <button class="icon-btn" id="btnCloseModal" title="Close">✕</button>
+        <div class="modal-head-right">
+          <div class="mini-proof" id="pvProof"></div>
+          <button class="icon-btn" id="btnCloseModal" title="Close">✕</button>
+        </div>
       </div>
 
-      <div class="video-wrap">
-        <video id="pvVideo" controls playsinline preload="metadata"></video>
-      </div>
+      <!-- 9:16 frame -->
+      <div class="video-stage">
+        <div class="video-frame">
+          <video id="pvVideo" controls playsinline preload="metadata"></video>
+        </div>
 
-      <div class="prompt-wrap">
-        <div class="prompt-title">Prompt gợi ý</div>
-        <div class="prompt-box" id="pvPrompt"></div>
-        <div class="prompt-actions">
-          <button class="btn ghost" id="btnCopyPrompt">Copy Prompt</button>
-          <a class="btn ghost" id="pvOpen" href="#" target="_blank" rel="noreferrer">Open MP4</a>
-          <button class="btn primary" id="pvNext">Next</button>
+        <div class="prompt-wrap">
+          <div class="prompt-title">Prompt gợi ý</div>
+          <div class="prompt-box" id="pvPrompt"></div>
+          <div class="prompt-actions">
+            <button class="btn ghost" id="btnCopyPrompt">Copy Prompt</button>
+            <a class="btn ghost" id="pvOpen" href="#" target="_blank" rel="noreferrer">Open MP4</a>
+            <button class="btn primary" id="pvNext">Next</button>
+          </div>
         </div>
       </div>
     </div>
