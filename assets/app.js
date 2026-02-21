@@ -1,6 +1,6 @@
 // web/assets/app.js
-// VideoGPT-like: poster thumbnails (frame capture + cache), hover preview, For You feed + Following
-// ✅ Only ONE download button in modal (btnDownload)
+// VideoGPT-like: poster thumbnails, hover preview, For You feed + Following
+// ✅ Mobile tabs TikTok-style: auto scroll active tab into view.
 
 const SND_BASE = "https://guerin.acequia.io/ai/";
 
@@ -205,7 +205,7 @@ function modeLabel(tags) {
   return "SHORTS";
 }
 
-// ---- Poster thumbnails (frame capture + cache) ----
+/* Poster cache */
 const POSTER_CACHE_PREFIX = "poster:v1:";
 const POSTER_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
@@ -233,11 +233,7 @@ async function capturePoster(url){
     v.preload = "auto";
     v.src = url;
 
-    const cleanup = () => {
-      v.pause();
-      v.removeAttribute("src");
-      v.load();
-    };
+    const cleanup = () => { v.pause(); v.removeAttribute("src"); v.load(); };
 
     v.addEventListener("error", () => { cleanup(); reject(new Error("video_error")); }, { once:true });
 
@@ -258,39 +254,25 @@ async function capturePoster(url){
             const dstAR = W / H;
 
             let sx=0, sy=0, sw=vw, sh=vh;
-            if(srcAR > dstAR){
-              sw = Math.floor(vh * dstAR);
-              sx = Math.floor((vw - sw)/2);
-            }else{
-              sh = Math.floor(vw / dstAR);
-              sy = Math.floor((vh - sh)/2);
-            }
+            if(srcAR > dstAR){ sw = Math.floor(vh * dstAR); sx = Math.floor((vw - sw)/2); }
+            else { sh = Math.floor(vw / dstAR); sy = Math.floor((vh - sh)/2); }
 
             ctx.drawImage(v, sx, sy, sw, sh, 0, 0, W, H);
             const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
             cleanup();
             resolve(dataUrl);
-          }catch(err){
-            cleanup();
-            reject(err);
-          }
+          }catch(err){ cleanup(); reject(err); }
         };
 
         if (!isNaN(v.duration) && v.duration > 0) {
           v.currentTime = target;
           v.addEventListener("seeked", doShot, { once:true });
-        } else {
-          doShot();
-        }
-      }catch(err){
-        cleanup();
-        reject(err);
-      }
+        } else doShot();
+      }catch(err){ cleanup(); reject(err); }
     }, { once:true });
   });
 }
 
-// ---- Build templates ----
 const TEMPLATES = URLS.map((url, i) => {
   const filename = filenameFromUrl(url);
   const category = CATEGORIES[i % CATEGORIES.length];
@@ -316,7 +298,7 @@ const TEMPLATES = URLS.map((url, i) => {
   };
 });
 
-// ---------- DOM ----------
+// DOM
 const grid = document.getElementById("grid");
 const feedList = document.getElementById("feedList");
 const toastEl = document.getElementById("toast");
@@ -337,12 +319,12 @@ const pvProof = document.getElementById("pvProof");
 const btnPlayPause = document.getElementById("btnPlayPause");
 const btnMute = document.getElementById("btnMute");
 const btnUnmute = document.getElementById("btnUnmute");
-
-// ✅ single download button
 const btnDownload = document.getElementById("btnDownload");
 
 const btnForYou = document.getElementById("btnForYou");
 const btnFollowing = document.getElementById("btnFollowing");
+
+const tabsBar = document.getElementById("tabsBar");
 
 document.getElementById("btnShuffle").addEventListener("click", () => {
   currentList = shuffle([...currentList]);
@@ -386,17 +368,14 @@ btnUnmute.addEventListener("click", () => {
   toast("Unmuted");
 });
 
-// ✅ Download (single)
 btnDownload.addEventListener("click", () => downloadCurrentVideo());
 
 async function downloadCurrentVideo() {
   const src = pvVideo?.src || "";
   if (!src) return toast("Chưa có video");
-
   toast("Đang tải…");
 
   try {
-    // Fast path (works depending on browser/cors)
     const a = document.createElement("a");
     a.href = src;
     a.download = filenameFromUrl(src) || "video.mp4";
@@ -405,7 +384,6 @@ async function downloadCurrentVideo() {
     a.click();
     a.remove();
 
-    // Blob fallback (may fail due to CORS — ignore)
     try {
       const res = await fetch(src, { mode: "cors" });
       if (!res.ok) throw new Error("fetch_not_ok");
@@ -457,13 +435,16 @@ document.querySelectorAll(".nav-item").forEach(btn => {
   });
 });
 
-// Top tabs
+// TikTok-like tabs
 document.querySelectorAll(".tab").forEach(btn => {
   btn.addEventListener("click", () => {
     document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
     btn.classList.add("active");
     activeTab = btn.dataset.tab || "all";
     applyFilters();
+
+    // ✅ scroll active tab into view (center)
+    try { btn.scrollIntoView({ behavior:"smooth", inline:"center", block:"nearest" }); } catch {}
   });
 });
 
@@ -474,7 +455,7 @@ pvNext.addEventListener("click", () => {
   openTemplate(currentList[currentIndex]);
 });
 
-// ---------- Filtering ----------
+// Filtering
 function applyFilters() {
   let list = [...TEMPLATES];
 
@@ -504,7 +485,7 @@ function applyFilters() {
   kickPosterJobs(list);
 }
 
-// ---------- Feed render ----------
+// Feed render
 function renderFeed(list) {
   feedList.innerHTML = "";
   const subset = list.slice(0, 24);
@@ -569,7 +550,7 @@ function renderFeed(list) {
   });
 }
 
-// ---------- Grid render ----------
+// Grid render
 function renderGrid(list) {
   grid.innerHTML = "";
   const subset = list.slice(0, 36);
@@ -610,7 +591,6 @@ function renderGrid(list) {
         ${posterHtml}
         <h3>${escapeHtml(t.title)}</h3>
         <p>${escapeHtml(t.desc)}</p>
-
         ${proofHtml}
 
         <div class="meta">
@@ -663,7 +643,7 @@ function renderGrid(list) {
   });
 }
 
-// ---------- Poster jobs ----------
+// Poster jobs
 let posterQueue = [];
 let posterRunning = 0;
 const POSTER_CONCURRENCY = 2;
@@ -679,7 +659,6 @@ function kickPosterJobs(list) {
 
   drainPosterQueue();
 }
-
 function drainPosterQueue() {
   while (posterRunning < POSTER_CONCURRENCY && posterQueue.length) {
     const url = posterQueue.shift();
@@ -696,7 +675,6 @@ function drainPosterQueue() {
       });
   }
 }
-
 function updatePostersInDOM(url, dataUrl) {
   const ids = TEMPLATES.filter(t => t.videoUrl === url).map(t => t.id);
   ids.forEach(id => {
@@ -706,13 +684,12 @@ function updatePostersInDOM(url, dataUrl) {
   });
 }
 
-// ---------- Modal actions ----------
+// Modal actions
 function runTemplate(t) {
   consoleStatus.textContent = "running";
   consoleSelected.textContent = t.title;
   openTemplate(t, { autoplay:true });
 }
-
 function openTemplate(t, { autoplay=true } = {}) {
   pvTitle.textContent = t.title;
   pvSub.textContent = `${t.ratio} • ${primaryLabel(t.primaryCategory)} • ${modeLabel(t.tags)}`;
@@ -729,19 +706,15 @@ function openTemplate(t, { autoplay=true } = {}) {
   btnMute.style.display = "none";
   btnUnmute.style.display = "";
   btnPlayPause.textContent = "⏸";
-
   pvVideo.load();
 
   modal.classList.add("show");
   modal.setAttribute("aria-hidden", "false");
 
   if (autoplay) {
-    pvVideo.play().catch(() => {
-      btnPlayPause.textContent = "▶";
-    });
+    pvVideo.play().catch(() => { btnPlayPause.textContent = "▶"; });
   }
 }
-
 function closeModal() {
   modal.classList.remove("show");
   modal.setAttribute("aria-hidden", "true");
@@ -751,7 +724,7 @@ function closeModal() {
   consoleStatus.textContent = "ready";
 }
 
-// ---------- Helpers ----------
+// Helpers
 function toast(msg) {
   toastEl.textContent = msg;
   toastEl.classList.add("show");
@@ -776,3 +749,11 @@ function shortId(id) {
 
 // Boot
 applyFilters();
+
+// ✅ On load: keep active tab centered on mobile
+setTimeout(() => {
+  const active = document.querySelector(".tab.active");
+  if (active) {
+    try { active.scrollIntoView({ behavior:"instant", inline:"center", block:"nearest" }); } catch {}
+  }
+}, 50);
