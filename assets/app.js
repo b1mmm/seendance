@@ -1,7 +1,6 @@
 // web/assets/app.js
-// VideoGPT-like: poster thumbnails (frame capture + cache), autoplay modal muted, For You feed + Following
-// Still: categories, tabs, social proof, hot badges, hover preview, 9:16 framing
-// ✅ Copy/Open MP4 replaced by Download Video
+// VideoGPT-like: poster thumbnails (frame capture + cache), hover preview, For You feed + Following
+// ✅ Only ONE download button in modal (btnDownload)
 
 const SND_BASE = "https://guerin.acequia.io/ai/";
 
@@ -53,10 +52,8 @@ function humanTitle(filename){
 function seedNum(s){ return Array.from(s).reduce((a,c)=>a+c.charCodeAt(0),0); }
 function pick(arr, seed){ return arr[seed % arr.length]; }
 
-// Categories
 const CATEGORIES = ["viral","business","affiliate","aesthetic","tech","tutorial","food","community"];
 
-// TikTok hooks
 const HOOKS = {
   viral: ["ĐỪNG LƯỚT! Coi cái này đã…","ỦA GÌ VẬY TRỜI 😳","Xem tới cuối mới hiểu…","Cái này đang hot dữ…","Thử đoán xem chuyện gì xảy ra?"],
   business: ["Chủ quán nào cũng cần cái này!","Bán hàng kiểu này dễ chốt hơn 😮","Tăng khách mà không cần nói nhiều…","Mẫu quảng cáo 7s — chốt liền!","Xem xong bạn sẽ muốn thử ngay"],
@@ -122,7 +119,6 @@ const PROMPT_BANK = {
   ]
 };
 
-// Social proof
 function formatK(n){
   if (n >= 1_000_000) return (n/1_000_000).toFixed(n%1_000_000===0?0:1) + "M";
   if (n >= 1_000) return (n/1_000).toFixed(n%1_000===0?0:1) + "K";
@@ -211,10 +207,9 @@ function modeLabel(tags) {
 
 // ---- Poster thumbnails (frame capture + cache) ----
 const POSTER_CACHE_PREFIX = "poster:v1:";
-const POSTER_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+const POSTER_TTL_MS = 1000 * 60 * 60 * 24 * 7;
 
 function posterKey(url){ return POSTER_CACHE_PREFIX + url; }
-
 function getCachedPoster(url){
   try{
     const raw = localStorage.getItem(posterKey(url));
@@ -225,13 +220,8 @@ function getCachedPoster(url){
     return obj.dataUrl;
   }catch{ return null; }
 }
-
 function setCachedPoster(url, dataUrl){
-  try{
-    localStorage.setItem(posterKey(url), JSON.stringify({ dataUrl, ts: Date.now() }));
-  }catch{
-    // ignore quota
-  }
+  try{ localStorage.setItem(posterKey(url), JSON.stringify({ dataUrl, ts: Date.now() })); }catch{}
 }
 
 async function capturePoster(url){
@@ -249,14 +239,12 @@ async function capturePoster(url){
       v.load();
     };
 
-    v.addEventListener("error", () => {
-      cleanup();
-      reject(new Error("video_error"));
-    }, { once:true });
+    v.addEventListener("error", () => { cleanup(); reject(new Error("video_error")); }, { once:true });
 
-    v.addEventListener("loadeddata", async () => {
+    v.addEventListener("loadeddata", () => {
       try{
         const target = Math.min(0.4, (v.duration || 1) * 0.1);
+
         const doShot = () => {
           try{
             const canvas = document.createElement("canvas");
@@ -350,9 +338,8 @@ const btnPlayPause = document.getElementById("btnPlayPause");
 const btnMute = document.getElementById("btnMute");
 const btnUnmute = document.getElementById("btnUnmute");
 
-// ✅ Download buttons
+// ✅ single download button
 const btnDownload = document.getElementById("btnDownload");
-const btnDownloadChip = document.getElementById("btnDownloadChip");
 
 const btnForYou = document.getElementById("btnForYou");
 const btnFollowing = document.getElementById("btnFollowing");
@@ -399,6 +386,45 @@ btnUnmute.addEventListener("click", () => {
   toast("Unmuted");
 });
 
+// ✅ Download (single)
+btnDownload.addEventListener("click", () => downloadCurrentVideo());
+
+async function downloadCurrentVideo() {
+  const src = pvVideo?.src || "";
+  if (!src) return toast("Chưa có video");
+
+  toast("Đang tải…");
+
+  try {
+    // Fast path (works depending on browser/cors)
+    const a = document.createElement("a");
+    a.href = src;
+    a.download = filenameFromUrl(src) || "video.mp4";
+    a.rel = "noreferrer";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    // Blob fallback (may fail due to CORS — ignore)
+    try {
+      const res = await fetch(src, { mode: "cors" });
+      if (!res.ok) throw new Error("fetch_not_ok");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a2 = document.createElement("a");
+      a2.href = url;
+      a2.download = filenameFromUrl(src) || "video.mp4";
+      document.body.appendChild(a2);
+      a2.click();
+      a2.remove();
+      URL.revokeObjectURL(url);
+    } catch {}
+  } catch (e) {
+    console.error(e);
+    toast("Không tải được 😢");
+  }
+}
+
 // Feed mode toggle
 let feedMode = "for_you";
 btnForYou.addEventListener("click", () => {
@@ -415,54 +441,6 @@ btnFollowing.addEventListener("click", () => {
   consoleMode.textContent = "following";
   applyFilters();
 });
-
-// ✅ Download handlers (both buttons call same logic)
-btnDownload.addEventListener("click", () => downloadCurrentVideo());
-btnDownloadChip.addEventListener("click", () => downloadCurrentVideo());
-
-async function downloadCurrentVideo() {
-  const src = pvVideo?.src || "";
-  if (!src) return toast("Chưa có video");
-
-  toast("Đang chuẩn bị tải…");
-
-  try {
-    // Try direct download first (fast path)
-    // Some browsers ignore download for cross-origin; fallback to blob fetch.
-    const direct = document.createElement("a");
-    direct.href = src;
-    direct.download = filenameFromUrl(src) || "video.mp4";
-    direct.rel = "noreferrer";
-    document.body.appendChild(direct);
-    direct.click();
-    direct.remove();
-
-    // If direct path blocked, user still can get a download prompt (depends on iOS).
-    // Provide blob fallback too for higher success:
-    // (Run blob fetch in background right away; if it fails due to CORS, ignore.)
-    try {
-      const res = await fetch(src, { mode: "cors" });
-      if (!res.ok) throw new Error("fetch_not_ok");
-      const blob = await res.blob();
-
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = filenameFromUrl(src) || "video.mp4";
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
-    } catch {
-      // ignore CORS failures
-    }
-
-    toast("Đang tải…");
-  } catch (e) {
-    console.error(e);
-    toast("Không tải được 😢");
-  }
-}
 
 let activeFilter = "all";
 let activeTab = "all";
@@ -496,7 +474,7 @@ pvNext.addEventListener("click", () => {
   openTemplate(currentList[currentIndex]);
 });
 
-// ---------- Filtering (guarantee non-empty + feedMode) ----------
+// ---------- Filtering ----------
 function applyFilters() {
   let list = [...TEMPLATES];
 
@@ -588,7 +566,6 @@ function renderFeed(list) {
     const img = item.querySelector(`img[data-poster="${t.id}"]`);
     const cached = getCachedPoster(t.videoUrl);
     if (cached) img.src = cached;
-    else img.src = "";
   });
 }
 
@@ -724,8 +701,7 @@ function updatePostersInDOM(url, dataUrl) {
   const ids = TEMPLATES.filter(t => t.videoUrl === url).map(t => t.id);
   ids.forEach(id => {
     document.querySelectorAll(`img[data-poster="${CSS.escape(id)}"]`).forEach(img => {
-      if (!img.src || img.src.startsWith("data:")) img.src = dataUrl;
-      else img.src = dataUrl;
+      img.src = dataUrl;
     });
   });
 }
