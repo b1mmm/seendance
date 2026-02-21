@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Seedance Video Agent — Demo</title>
+  <title>Video Agent — Trending Templates</title>
   <link rel="stylesheet" href="./assets/app.css" />
 </head>
 <body>
@@ -16,37 +16,57 @@
 
       <div class="device">
         <span class="dot"></span>
-        <span id="deviceName">emulator-5554</span>
+        <span id="deviceName">trending-feed</span>
         <span class="caret">▾</span>
       </div>
 
+      <!-- NEW: Trending categories (sidebar) -->
       <nav class="nav">
-        <button class="nav-item active" data-filter="all">Command</button>
-        <button class="nav-item" data-filter="audit">Audit Bot Ads</button>
-        <button class="nav-item" data-filter="cafe">Cafe / Local</button>
-        <button class="nav-item" data-filter="brand">Brand / CTA</button>
+        <button class="nav-item active" data-filter="all">🔥 Khám phá tất cả</button>
+
+        <button class="nav-item" data-filter="viral">🚀 Viral & Social</button>
+        <button class="nav-item" data-filter="business">💼 Business & Marketing</button>
+        <button class="nav-item" data-filter="affiliate">💰 Affiliate Ready</button>
+        <button class="nav-item" data-filter="aesthetic">🎨 Lifestyle & Aesthetic</button>
+        <button class="nav-item" data-filter="tech">🧠 Tech & AI</button>
+        <button class="nav-item" data-filter="tutorial">🛠 Tutorials & How-To</button>
+        <button class="nav-item" data-filter="food">🍽 Food & Local</button>
+        <button class="nav-item" data-filter="community">📍 Challenges & Community</button>
       </nav>
 
       <div class="sidebar-footer">
         <div class="muted small">
-          Demo mode • one-click preview
+          One-click demo • Bấm <b>Run</b> để xem preview.
         </div>
       </div>
     </aside>
 
     <main class="main">
       <header class="topbar">
+        <!-- NEW: Top tabs like “feed modes” -->
         <div class="tabs">
           <button class="tab active" data-tab="all">All</button>
-          <button class="tab" data-tab="audit">Ads</button>
-          <button class="tab" data-tab="brand">Brand</button>
-          <button class="tab" data-tab="comm">Communication</button>
+          <button class="tab" data-tab="shorts">Shorts</button>
+          <button class="tab" data-tab="pov">POV</button>
+          <button class="tab" data-tab="cinematic">Cinematic</button>
+          <button class="tab" data-tab="deals">Deals</button>
+          <button class="tab" data-tab="local">Local</button>
         </div>
 
         <div class="top-actions">
           <button class="icon-btn" id="btnShuffle" title="Shuffle">⟳</button>
         </div>
       </header>
+
+      <!-- NEW: Hero bar (simple, no extra CSS needed) -->
+      <section class="panel">
+        <div class="panel-title">🔥 Trending Templates</div>
+        <div class="console">
+          <div class="line"><span class="k">Mood:</span> <span class="v">viral • gần gũi • dễ làm • dễ bán</span></div>
+          <div class="line"><span class="k">Tip:</span> <span class="v muted">Bắt đầu từ <b>Viral</b> hoặc <b>Affiliate</b> để thấy “phê” nhất.</span></div>
+          <div class="line"><span class="k">Action:</span> <span class="v muted">Bấm <b>Run</b> → xem video. Bạn sẽ gắn link MP4 sau trong <code>VIDEO_URLS</code>.</span></div>
+        </div>
+      </section>
 
       <section class="grid" id="grid"></section>
 
@@ -55,7 +75,7 @@
         <div class="console">
           <div class="line"><span class="k">Status:</span> <span id="consoleStatus" class="v">ready</span></div>
           <div class="line"><span class="k">Selected:</span> <span id="consoleSelected" class="v">none</span></div>
-          <div class="line"><span class="k">Hint:</span> <span class="v muted">Bấm Run để xem video. Link MP4 sẽ do bạn gắn vào app.js sau.</span></div>
+          <div class="line"><span class="k">Hint:</span> <span class="v muted">Cứ bấm Run liên tục để “lướt template” như App Store.</span></div>
         </div>
       </section>
     </main>
