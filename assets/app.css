@@ -141,6 +141,7 @@ body{
   height: 62vh;
   overflow:auto;
   scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
 }
 .feed-item{
   scroll-snap-align: start;
@@ -249,7 +250,7 @@ body{
   position:absolute;
   top:12px;
   left:12px;
-  z-index: 3;
+  z-index: 4;
   pointer-events:none;
 }
 .badge{
@@ -280,14 +281,14 @@ body{
   background: rgba(0,0,0,.18);
 }
 
-/* Poster thumbnail strip */
+/* Poster thumbnail (grid card) */
 .poster{
   width: 100%;
   border:1px solid var(--border);
   border-radius: 12px;
   background:#000;
   overflow:hidden;
-  aspect-ratio: 16 / 9; /* poster in grid card: wide thumbnail */
+  aspect-ratio: 16 / 9;
 }
 .poster img{
   width:100%; height:100%;
@@ -336,6 +337,7 @@ body{
   z-index: 50;
 }
 .modal.show{display:flex}
+
 .modal-inner{
   width: 1040px;
   max-width: 94vw;
@@ -361,14 +363,34 @@ body{
 }
 .mini-proof .proof-chip{ background: rgba(255,255,255,.02); }
 
+/* ✅ Mobile Safari fix: avoid vertical centering + use safe viewport height */
+@media (max-width: 760px){
+  .modal{
+    align-items:flex-start;
+    justify-content:center;
+    padding: 12px 0;
+  }
+  .modal-inner{
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100svh - 24px);
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    margin: 12px;
+  }
+}
+
+/* Stage */
 .video-stage{
   display:grid;
   grid-template-columns: 420px 1fr;
   gap: 12px;
 }
-@media (max-width: 900px){ .video-stage{ grid-template-columns: 1fr; } }
+@media (max-width: 900px){
+  .video-stage{ grid-template-columns: 1fr; }
+}
 
-/* 9:16 frame like VideoGPT */
+/* ✅ Stable 9:16 frame (NO ::before + NO margin-top hack) */
 .video-frame{
   width: 100%;
   border:1px solid var(--border);
@@ -376,21 +398,22 @@ body{
   background: rgba(255,255,255,.02);
   padding: 10px;
   position:relative;
-}
-.video-frame::before{
-  content:"";
-  display:block;
+
   aspect-ratio: 9 / 16;
+  max-height: 78svh;
+  display:flex;
+  align-items:center;
+  justify-content:center;
 }
 .video-frame video{
-  position: relative;
-  width: 100%;
-  height: auto;
-  aspect-ratio: 9 / 16;
+  position:absolute;
+  inset: 10px;
+  width: calc(100% - 20px);
+  height: calc(100% - 20px);
   object-fit: contain;
   border-radius: 12px;
   background:#000;
-  margin-top: -100%;
+  margin:0;
 }
 
 /* Player chips */
@@ -401,6 +424,7 @@ body{
   display:flex;
   flex-direction:column;
   gap:8px;
+  z-index: 5;
 }
 .chip{
   border:1px solid var(--border);
@@ -413,6 +437,7 @@ body{
   backdrop-filter: blur(8px);
 }
 
+/* Prompt panel */
 .prompt-wrap{
   border:1px solid var(--border);
   border-radius: 14px;
