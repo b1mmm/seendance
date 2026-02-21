@@ -1,12 +1,18 @@
 // web/assets/app.js
-// Guaranteed content per category + trending titles + prompt suggestions
+// Social proof + HOT badge + hover preview + TikTok VN titles/desc + guaranteed content per category
 // 100% remote mp4 URLs
 
-// If your SND files are hosted elsewhere, change this base:
 const SND_BASE = "https://guerin.acequia.io/ai/";
 
-// Original list you gave (some are file names, some are full URLs)
 const RAW_LIST = [
+  "[SND]BethGulfofMexico.mp4",
+  "[SND]Breecker-crane-over-head-with-LOTR-Nazgul.mp4",
+  "[SND]breecker-dolly-left-swipe-in-person.mp4",
+  "[SND]ed-angel-gorilla-2.mp4",
+  "[SND]ed-angel-gorilla.mp4",
+  "[SND]errand-missed-catch.mp4",
+  "[SND]Graydon_RxBurn.mp4",
+  "[SND]nyc-lateshow-icecream.mp4",
   "https://guerin.acequia.io/ai/owen-dolly-in-smile.mp4",
   "https://guerin.acequia.io/ai/owen-dolly-right-smile.mp4",
   "https://guerin.acequia.io/ai/plume-bulletcam-partial-fail.mp4",
@@ -28,7 +34,6 @@ function normalizeToUrl(item) {
   }
   return s;
 }
-
 const URLS = RAW_LIST.map(normalizeToUrl);
 
 function filenameFromUrl(url) {
@@ -36,135 +41,209 @@ function filenameFromUrl(url) {
     const u = new URL(url);
     const last = u.pathname.split("/").pop() || "video.mp4";
     return decodeURIComponent(last);
-  } catch {
-    return "video.mp4";
-  }
+  } catch { return "video.mp4"; }
 }
-
-function slugify(s) {
-  return s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+function baseName(filename){ return filename.replace(/\.mp4$/i, ""); }
+function slugify(s){ return s.toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,""); }
+function humanTitle(filename){
+  const name = baseName(filename).replace(/[_-]+/g," ").trim();
+  return name.split(" ").filter(Boolean).map(w => w.length<=2 ? w.toUpperCase() : (w[0].toUpperCase()+w.slice(1))).join(" ");
 }
+function seedNum(s){ return Array.from(s).reduce((a,c)=>a+c.charCodeAt(0),0); }
+function pick(arr, seed){ return arr[seed % arr.length]; }
 
-function humanTitle(filename) {
-  const name = filename.replace(/\.mp4$/i, "").replace(/[_-]+/g, " ").trim();
-  return name
-    .split(" ")
-    .filter(Boolean)
-    .map(w => w.length <= 2 ? w.toUpperCase() : (w[0].toUpperCase() + w.slice(1)))
-    .join(" ");
-}
+// Categories
+const CATEGORIES = ["viral","business","affiliate","aesthetic","tech","tutorial","food","community"];
 
-// ---- Trend labels + prompts ----
+// TikTok hooks
+const HOOKS = {
+  viral: ["ĐỪNG LƯỚT! Coi cái này đã…","ỦA GÌ VẬY TRỜI 😳","Xem tới cuối mới hiểu…","Cái này đang hot dữ…","Thử đoán xem chuyện gì xảy ra?"],
+  business: ["Chủ quán nào cũng cần cái này!","Bán hàng kiểu này dễ chốt hơn 😮","Tăng khách mà không cần nói nhiều…","Mẫu quảng cáo 7s — chốt liền!","Xem xong bạn sẽ muốn thử ngay"],
+  affiliate: ["Top món đáng mua tuần này 🔥","Đừng mua nếu chưa xem clip này!","Deal ngon vậy mà ít người biết…","So sánh 'đắt vs đáng' cực gắt","Link bio — hết là thôi!"],
+  aesthetic: ["Nhìn mà muốn đi liền… 🌅","Cảnh này chill quá trời","Mood hôm nay: nhẹ thôi…","Đẹp kiểu không cần cố","Xem xong tự dưng thấy yên"],
+  tech: ["AI làm cái này trong 5 giây…","Công nghệ giờ ghê thật 😳","Bấm 1 cái là ra kết quả…","Scan kiểu này nhìn đã mắt","Đừng nói bạn chưa thấy cái này!"],
+  tutorial: ["3 bước thôi, làm liền!","Sai ở đây nè… sửa cái là xong","Lưu lại, mai làm khỏi quên","Cách làm nhanh nhất đây","Ai cũng làm được (thật)"],
+  food: ["Đói chưa? Nhìn này đi… 🤤","Món này mà chưa thử là phí","Ăn cái này xong muốn quay lại","Menu quán: món nào cũng cuốn","Ngon kiểu 'đứng hình' luôn"],
+  community: ["Bạn chọn cái nào? Comment đi!","Nhìn vậy chứ… bạn nghĩ sao?","Duet thử xem ai đúng 😆","Ai từng gặp chưa?","Đố bạn đoán kết thúc!"]
+};
+
+const DESC_PATTERNS = {
+  viral: ["Hook 0–2s, loop mượt. Coi xong dễ xem lại 😵‍💫","POV đời thường nhưng twist nhẹ. Đừng chớp mắt.","Nhịp nhanh, chữ to. Dành cho Reels/TikTok."],
+  business: ["Mẫu ads 7–9s: rõ lợi ích + CTA gọn. Dễ chạy local.","Đưa vào fanpage là lên vibe chuyên nghiệp liền.","Chốt bằng 1 câu CTA — người xem hiểu ngay."],
+  affiliate: ["Format chốt mua: nêu lợi ích → giá → link bio.","So sánh nhanh 'đắt vs đáng' — cực hợp review.","Countdown deal: tạo FOMO nhẹ, hiệu quả."],
+  aesthetic: ["Cinematic nhẹ, chữ tối giản. Đẹp để người xem 'thở'.","Mood chill, ánh sáng mềm. Hợp làm intro brand.","Nhịp chậm nhưng cuốn. Xem là muốn lưu."],
+  tech: ["UI overlay + scan vibe. Hợp clip AI/automation.","Nhìn như tool xịn: 1 câu vấn đề → 1 câu giải pháp.","Cyber trailer ngắn: warning + score + CTA."],
+  tutorial: ["How-to 3 bước: chữ rõ, nhanh gọn, ai cũng hiểu.","Fail → fix: show lỗi 1s rồi xử lý 5s.","Checklist tick/cross. Dễ viral kiểu 'lưu lại'."],
+  food: ["Close-up texture + chữ 'PHẢI THỬ'. Hợp local quán.","3 món signature, text ngắn, xem là đói.","Vibe street food: cut nhanh, nhạc vui."],
+  community: ["Kêu gọi comment, duet-ready. Đẩy tương tác mạnh.","2 lựa chọn đối lập: ai cũng muốn nói ý kiến.","Format câu hỏi: xem xong phải comment."]
+};
+
 const PROMPT_BANK = {
   viral: [
-    "Hook 0–1s bằng text giật tít: 'Bạn sẽ bất ngờ vì điều này…' + quick zoom, high contrast, upbeat cut.",
-    "POV tình huống đời thường, text ngắn 5–7 từ, nhịp cắt nhanh, nhấn reaction cuối clip.",
-    "Loop mượt (end frame match start), thêm sound cue nhẹ để tăng rewatch."
+    "Hook 0–1s: chữ to giật tít 5–7 từ. Cắt nhanh. Kết bằng 1 twist để tăng rewatch. Loop khớp frame đầu/cuối.",
+    "POV đời thường: text 1 dòng, nhấn reaction cuối clip. Thêm sound cue nhẹ ở beat drop.",
+    "Dùng 3 shot: (mở bối cảnh) → (cao trào 2s) → (kết bất ngờ). Chữ to, ít chữ."
   ],
   business: [
-    "Quảng cáo local business: 3 shot (establish → product/service → CTA), overlay giá/ưu đãi, logo nhỏ góc dưới.",
-    "Social proof: review 1 câu + 3 bullet lợi ích + CTA 'Inbox nhận ưu đãi'.",
-    "Story brand: trước/sau + con số cụ thể (vd: 'giảm 70% rủi ro')."
+    "Local ads: 3 cảnh (bối cảnh → lợi ích → CTA). Overlay giá/ưu đãi. Logo nhỏ góc dưới. CTA 1 dòng.",
+    "Social proof: 1 câu review + 3 bullet lợi ích + CTA 'Inbox nhận ưu đãi'.",
+    "Before/After + số liệu cụ thể (vd: +30% khách). Kết bằng CTA mạnh."
   ],
   affiliate: [
-    "Affiliate template: 'Top 3 món đáng mua tuần này' + on-screen price + CTA 'link bio'.",
-    "Before/After: 'đắt vs đáng' + 2 cảnh so sánh + 1 câu kết chốt mua.",
-    "Deal countdown: 10s, 3 mốc thời gian, chữ lớn dễ đọc trên mobile."
+    "Top list: 'Top 3 đáng mua' + giá + CTA 'link bio'. Text to, dễ đọc mobile.",
+    "So sánh 'đắt vs đáng': 2 cảnh đối chiếu + 1 câu chốt mua. Nhịp 7–9s.",
+    "Deal countdown: 3 mốc thời gian + chữ cực to + kết bằng 'hết là thôi'."
   ],
   aesthetic: [
-    "Aesthetic cinematic: ánh sáng mềm, motion chậm, color grading nhẹ, chữ tối giản.",
-    "Travel vibe: establishing wide → medium → close-up texture, nhạc chill, cảm giác 'muốn đi ngay'.",
-    "Golden hour: flare nhẹ, bokeh, slow pan, text 1 dòng."
+    "Aesthetic cinematic: ánh sáng mềm, motion chậm, chữ tối giản. Color grade nhẹ, không spam text.",
+    "Travel vibe: wide → medium → close-up texture. Nhạc chill, vibe 'muốn đi ngay'.",
+    "Golden hour: flare nhẹ, bokeh, pan chậm. Text 1 dòng."
   ],
   tech: [
-    "Tech/AI vibe: UI overlay, scan lines, neon accent nhẹ, highlight keyword (AI / Auto / Score).",
-    "Explainer nhanh: 1 câu vấn đề → 1 câu giải pháp → 1 CTA 'Try now'.",
-    "Cyber trailer: warning card, risk score, icon shield, kết thúc bằng hotline."
+    "Tech/AI: overlay UI, scan lines nhẹ, highlight keyword (AI / Auto / Score). Kết bằng CTA 'Try now'.",
+    "Explainer 1 câu: vấn đề → giải pháp → CTA. Giữ chữ to, ít chữ.",
+    "Cyber trailer: warning card 0.5s + risk score + icon shield + CTA hotline."
   ],
   tutorial: [
-    "How-to 3 bước: Step 1/2/3 xuất hiện rõ, mỗi bước 1–2s, chữ to.",
-    "Before/After kèm checklist: 'Bật/Tắt' + icon tick/cross, kết thúc bằng 'làm ngay'.",
-    "Fail case → fix: show lỗi 1s rồi chuyển sang giải pháp 4s."
+    "How-to 3 bước: Step 1/2/3 rõ ràng, mỗi bước 1–2s. Chữ to, ít chữ.",
+    "Fail → Fix: show lỗi 1s rồi chuyển giải pháp 5s. Kết bằng 'lưu lại'.",
+    "Checklist: tick/cross, kết bằng 'làm ngay'."
   ],
   food: [
-    "Food close-up: macro texture, steam/sizzle, text 'must try' + địa điểm.",
-    "Menu highlight: 3 món signature, giá/ưu đãi, CTA 'đặt bàn'.",
-    "Street vibe: handheld nhẹ, cut nhanh, nhạc vui."
+    "Food macro: close-up texture, steam/sizzle, chữ 'PHẢI THỬ' + địa điểm. Cut nhanh 0.7s/shot.",
+    "Menu highlight: 3 món signature + giá/ưu đãi + CTA đặt bàn. Text to.",
+    "Street vibe: handheld nhẹ, cut nhanh, nhạc vui. Kết bằng tag bạn bè."
   ],
   community: [
-    "Reaction: 'Bạn chọn cái nào?' + 2 lựa chọn, cuối clip hỏi comment.",
-    "Duet-ready: để khoảng trống bên trái cho người duet, text câu hỏi.",
-    "Challenge: hashtag + rule 1 dòng + call-to-action tham gia."
+    "Question format: 'Bạn chọn cái nào?' + 2 lựa chọn. Kết: 'comment đi'.",
+    "Duet-ready: chừa khoảng trống. Text câu hỏi. Kết bằng hashtag.",
+    "Challenge: hashtag + luật 1 dòng + call-to-action tham gia."
   ]
 };
 
-// Ensure every category always has content:
-// We'll assign each URL into multiple categories by rotation to guarantee filters always return videos.
-const CATEGORIES = ["viral","business","affiliate","aesthetic","tech","tutorial","food","community"];
+// Social proof generator (deterministic)
+function formatK(n){
+  if (n >= 1_000_000) return (n/1_000_000).toFixed(n%1_000_000===0?0:1) + "M";
+  if (n >= 1_000) return (n/1_000).toFixed(n%1_000===0?0:1) + "K";
+  return String(n);
+}
 
-// Additional tags for top tabs
-const TAB_TAGS = ["shorts","pov","cinematic","deals","local"];
+function genSocial(seed) {
+  // seed deterministic -> stable across reload
+  const views = 8_000 + (seed * 97) % 2_400_000;     // 8K..~2.4M
+  const saves = 50 + (seed * 13) % 18_000;           // 50..18K
+  const score = 68 + (seed * 7) % 32;                // 68..99
+  return { views, saves, score };
+}
+
+// Badge logic
+function genBadge(category, tags, seed) {
+  // ensure "viral/affiliate" more likely HOT
+  const base = (seed % 100);
+  if (category === "viral" || category === "affiliate") {
+    if (base < 55) return { text:"🔥 HOT", cls:"hot" };
+    if (base < 85) return { text:"🚀 TREND", cls:"trend" };
+    return { text:"✅ NEW", cls:"new" };
+  }
+  if (tags.includes("deals") && base < 55) return { text:"🔥 HOT", cls:"hot" };
+  if (tags.includes("cinematic") && base < 45) return { text:"🚀 TREND", cls:"trend" };
+  if (base < 25) return { text:"✅ NEW", cls:"new" };
+  return null; // some cards have no badge -> looks more organic
+}
+
+function tiktokTitle(category, filename) {
+  const seed = seedNum(filename + category);
+  const hook = pick(HOOKS[category] || HOOKS.viral, seed);
+  const core = humanTitle(filename);
+  const shortCore = core.length > 28 ? core.slice(0, 28).trim() + "…" : core;
+  return `${hook} • ${shortCore}`;
+}
+
+function tiktokDesc(category, filename) {
+  const seed = seedNum(category + filename);
+  const pattern = pick(DESC_PATTERNS[category] || DESC_PATTERNS.viral, seed);
+  const cta =
+    category === "community" ? "Comment 1 chữ cũng được!" :
+    category === "tutorial" ? "Lưu lại kẻo quên." :
+    category === "affiliate" ? "Link bio nhé." :
+    category === "business" ? "Dùng cho fanpage là đẹp." :
+    category === "food" ? "Tag đứa bạn hay ăn!" :
+    category === "tech" ? "Bạn thử kiểu này chưa?" :
+    category === "aesthetic" ? "Mood này hợp tối nay." :
+    "Đừng lướt vội.";
+  return `${pattern} • ${cta}`;
+}
+
+function pickPrompt(category, filename) {
+  const pool = PROMPT_BANK[category] || PROMPT_BANK.viral;
+  const n = seedNum(filename);
+  return pool[n % pool.length];
+}
 
 function buildTags(filename, idx, category) {
   const f = filename.toLowerCase();
-  const tags = new Set([category, "shorts"]); // always shorts
+  const tags = new Set([category, "shorts", "viral"]);
 
-  // some deterministic variety so each tab also gets content
+  // deterministic variety (tabs)
   if (idx % 2 === 0) tags.add("cinematic");
   if (idx % 3 === 0) tags.add("pov");
   if (idx % 4 === 0) tags.add("local");
   if (idx % 5 === 0) tags.add("deals");
 
-  // add some content-aware hints
+  // content-aware
   if (f.includes("dolly") || f.includes("crane") || f.includes("orbit") || f.includes("rotate")) tags.add("cinematic");
   if (f.includes("smile") || f.includes("thumbs-up") || f.includes("toast")) tags.add("pov");
   if (f.includes("nyc") || f.includes("museum")) tags.add("local");
   if (f.includes("icecream")) tags.add("food"), tags.add("deals"), tags.add("affiliate");
 
-  // ALSO add viral always to keep exploration fun
-  tags.add("viral");
+  // cross tags (explore)
+  if (category === "business") tags.add("deals");
+  if (category === "affiliate") tags.add("business");
+  if (category === "food") tags.add("local");
+  if (category === "tech") tags.add("tutorial");
 
   return Array.from(tags);
 }
 
-function pickPrompt(category, filename) {
-  const pool = PROMPT_BANK[category] || PROMPT_BANK.viral;
-  // deterministic pick by filename hash-ish
-  const n = Array.from(filename).reduce((a,c)=>a+c.charCodeAt(0), 0);
-  return pool[n % pool.length];
-}
-
-function buildDesc(category, filename) {
+function primaryLabel(category) {
   const map = {
-    viral: "Hook mạnh 0–2s • loop mượt • dễ viral",
-    business: "Quảng cáo nhanh • rõ lợi ích • có CTA",
-    affiliate: "Gắn link bio • chốt mua nhanh • deals",
-    aesthetic: "Chill đẹp • cinematic • minimal text",
-    tech: "AI/Tech vibe • UI overlay • scan effect",
-    tutorial: "How-to 3 bước • dễ hiểu • nhanh gọn",
-    food: "Ngon mắt • texture • địa điểm rõ",
-    community: "Kêu gọi comment • reaction • duet-ready"
+    viral:"VIRAL", business:"BUSINESS", affiliate:"AFFILIATE", aesthetic:"AESTHETIC",
+    tech:"TECH", tutorial:"HOW-TO", food:"FOOD", community:"COMMUNITY"
   };
-  const base = map[category] || "Trending template";
-  return `${base} • ${humanTitle(filename)}`;
+  return map[category] || "TREND";
+}
+function modeLabel(tags) {
+  if (tags.includes("cinematic")) return "CINEMATIC";
+  if (tags.includes("pov")) return "POV";
+  if (tags.includes("deals")) return "DEALS";
+  if (tags.includes("local")) return "LOCAL";
+  return "SHORTS";
 }
 
-// Build templates: rotate primary category so every filter always has items.
+// Build templates
 const TEMPLATES = URLS.map((url, i) => {
   const filename = filenameFromUrl(url);
   const category = CATEGORIES[i % CATEGORIES.length];
-  const id = `tpl_${i + 1}_${slugify(filename.replace(/\.mp4$/i,""))}`;
+  const id = `tpl_${i + 1}_${slugify(baseName(filename))}`;
+
+  const tags = buildTags(filename, i, category);
+  const seed = seedNum(id);
+  const social = genSocial(seed);
+  const badge = genBadge(category, tags, seed);
 
   return {
     id,
     videoUrl: url,
-    title: `${humanTitle(filename)} — ${category.toUpperCase()}`,
-    desc: buildDesc(category, filename),
-    tags: buildTags(filename, i, category),
+    title: tiktokTitle(category, filename),
+    desc: tiktokDesc(category, filename),
+    tags,
     ratio: "9:16",
     style: "Trending",
     duration: "6–10s",
-    prompt: pickPrompt(category, filename)
+    prompt: pickPrompt(category, filename),
+    primaryCategory: category,
+    social,
+    badge
   };
 });
 
@@ -183,6 +262,7 @@ const pvOpen = document.getElementById("pvOpen");
 const pvNext = document.getElementById("pvNext");
 const pvPrompt = document.getElementById("pvPrompt");
 const btnCopyPrompt = document.getElementById("btnCopyPrompt");
+const pvProof = document.getElementById("pvProof");
 
 document.getElementById("btnShuffle").addEventListener("click", () => {
   currentList = shuffle([...currentList]);
@@ -191,25 +271,17 @@ document.getElementById("btnShuffle").addEventListener("click", () => {
 });
 
 btnCloseModal.addEventListener("click", closeModal);
-modal.addEventListener("click", (e) => {
-  if (e.target === modal) closeModal();
-});
+modal.addEventListener("click", (e) => { if (e.target === modal) closeModal(); });
 
 window.addEventListener("keydown", (e) => {
   if (e.key === "Escape") closeModal();
-  if (modal.classList.contains("show") && (e.key === "ArrowRight" || e.key === "Enter")) {
-    pvNext.click();
-  }
+  if (modal.classList.contains("show") && (e.key === "ArrowRight" || e.key === "Enter")) pvNext.click();
 });
 
 btnCopyPrompt.addEventListener("click", async () => {
   const text = pvPrompt.textContent || "";
-  try {
-    await navigator.clipboard.writeText(text);
-    toast("Copied");
-  } catch {
-    toast("Copy failed");
-  }
+  try { await navigator.clipboard.writeText(text); toast("Copied"); }
+  catch { toast("Copy failed"); }
 });
 
 let activeFilter = "all";
@@ -247,22 +319,12 @@ pvNext.addEventListener("click", () => {
 // ---------- Filtering (guarantee non-empty) ----------
 function applyFilters() {
   let list = [...TEMPLATES];
+  if (activeFilter !== "all") list = list.filter(t => t.tags.includes(activeFilter));
+  if (activeTab !== "all") list = list.filter(t => t.tags.includes(activeTab));
 
-  if (activeFilter !== "all") {
-    list = list.filter(t => t.tags.includes(activeFilter));
-  }
-  if (activeTab !== "all") {
-    list = list.filter(t => t.tags.includes(activeTab));
-  }
-
-  // Guarantee: if somehow empty, fallback to a curated selection for that category/tab.
   if (!list.length) {
-    if (activeFilter !== "all") {
-      list = TEMPLATES.filter(t => t.tags.includes(activeFilter));
-    }
-    if (!list.length && activeTab !== "all") {
-      list = TEMPLATES.filter(t => t.tags.includes(activeTab));
-    }
+    if (activeFilter !== "all") list = TEMPLATES.filter(t => t.tags.includes(activeFilter));
+    if (!list.length && activeTab !== "all") list = TEMPLATES.filter(t => t.tags.includes(activeTab));
     if (!list.length) list = [...TEMPLATES];
   }
 
@@ -278,7 +340,7 @@ function renderGrid(list) {
   if (!list.length) {
     const empty = document.createElement("div");
     empty.className = "card";
-    empty.innerHTML = `<h3>No templates</h3><p>Không có mẫu phù hợp.</p>`;
+    empty.innerHTML = `<div class="card-content"><h3>Không có template</h3><p>Thử đổi danh mục hoặc tab khác.</p></div>`;
     grid.appendChild(empty);
     return;
   }
@@ -286,31 +348,83 @@ function renderGrid(list) {
   list.forEach((t, idx) => {
     const el = document.createElement("div");
     el.className = "card";
-    el.innerHTML = `
-      <h3>${escapeHtml(t.title)}</h3>
-      <p>${escapeHtml(t.desc)}</p>
-      <div class="meta">
-        <span class="pill">${escapeHtml(activePrimaryTag(t))}</span>
-        <span class="pill">${escapeHtml(pickBadge(t))}</span>
-        <span class="pill">${escapeHtml(t.duration)}</span>
-      </div>
-      <div class="run">
-        <span class="status">${escapeHtml(shortId(t.id))}</span>
-        <button class="btn ghost" data-open="${t.id}">Preview</button>
-        <button class="btn primary" data-run="${t.id}">Run</button>
+    el.dataset.id = t.id;
+
+    const badgeHtml = t.badge
+      ? `<div class="badges"><span class="badge ${t.badge.cls}">${escapeHtml(t.badge.text)}</span></div>`
+      : "";
+
+    const proofHtml = `
+      <div class="proof-row">
+        <span class="proof-chip">👀 ${formatK(t.social.views)} views</span>
+        <span class="proof-chip">💾 ${formatK(t.social.saves)} saves</span>
+        <span class="proof-chip">📈 ${t.social.score}/100</span>
       </div>
     `;
+
+    el.innerHTML = `
+      ${badgeHtml}
+
+      <div class="hover-preview" aria-hidden="true">
+        <div class="mini-frame">
+          <video muted loop playsinline preload="metadata"></video>
+        </div>
+      </div>
+
+      <div class="card-content">
+        <h3>${escapeHtml(t.title)}</h3>
+        <p>${escapeHtml(t.desc)}</p>
+
+        ${proofHtml}
+
+        <div class="meta">
+          <span class="pill">${escapeHtml(primaryLabel(t.primaryCategory))}</span>
+          <span class="pill">${escapeHtml(modeLabel(t.tags))}</span>
+          <span class="pill">${escapeHtml(t.duration)}</span>
+        </div>
+
+        <div class="run">
+          <span class="status">${escapeHtml(shortId(t.id))}</span>
+          <button class="btn ghost" data-open="${t.id}">Preview</button>
+          <button class="btn primary" data-run="${t.id}">Run</button>
+        </div>
+      </div>
+    `;
+
     grid.appendChild(el);
 
+    // Bind buttons
     el.querySelector(`[data-open="${t.id}"]`).addEventListener("click", () => {
       currentIndex = idx;
       openTemplate(t);
     });
-
     el.querySelector(`[data-run="${t.id}"]`).addEventListener("click", () => {
       currentIndex = idx;
       runTemplate(t);
     });
+
+    // Hover preview (desktop)
+    const miniVideo = el.querySelector(".hover-preview video");
+    const prefersReduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const isFinePointer = window.matchMedia && window.matchMedia("(pointer: fine)").matches; // desktop mouse
+
+    if (miniVideo && !prefersReduced && isFinePointer) {
+      miniVideo.src = t.videoUrl;
+      miniVideo.load();
+
+      let hoverTimer = null;
+
+      el.addEventListener("mouseenter", () => {
+        hoverTimer = setTimeout(() => {
+          try { miniVideo.currentTime = 0; miniVideo.play(); } catch {}
+        }, 120);
+      });
+
+      el.addEventListener("mouseleave", () => {
+        if (hoverTimer) clearTimeout(hoverTimer);
+        try { miniVideo.pause(); } catch {}
+      });
+    }
   });
 }
 
@@ -323,12 +437,17 @@ function runTemplate(t) {
 
 function openTemplate(t) {
   pvTitle.textContent = t.title;
-  pvSub.textContent = `${t.ratio} • ${t.style} • ${t.duration}`;
+  pvSub.textContent = `${t.ratio} • ${primaryLabel(t.primaryCategory)} • ${modeLabel(t.tags)}`;
   pvPrompt.textContent = t.prompt || "";
+
+  pvProof.innerHTML = `
+    <span class="proof-chip">👀 ${formatK(t.social.views)} views</span>
+    <span class="proof-chip">💾 ${formatK(t.social.saves)} saves</span>
+    <span class="proof-chip">📈 ${t.social.score}/100</span>
+  `;
 
   pvVideo.src = t.videoUrl;
   pvVideo.load();
-
   pvOpen.href = t.videoUrl;
 
   modal.classList.add("show");
@@ -348,15 +467,13 @@ function closeModal() {
 function toast(msg) {
   toastEl.textContent = msg;
   toastEl.classList.add("show");
-  setTimeout(() => toastEl.classList.remove("show"), 1300);
+  setTimeout(() => toastEl.classList.remove("show"), 1200);
 }
-
 function escapeHtml(s="") {
   return String(s).replace(/[&<>"']/g, m => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
   }[m]));
 }
-
 function shuffle(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -364,27 +481,9 @@ function shuffle(arr) {
   }
   return arr;
 }
-
 function shortId(id) {
-  // keep it compact on UI
-  const parts = id.split("_");
-  return parts.slice(0, 2).join("_"); // tpl_#
-}
-
-function activePrimaryTag(t) {
-  // show a meaningful category pill
-  const priority = ["viral","affiliate","business","aesthetic","tech","tutorial","food","community"];
-  for (const p of priority) if (t.tags.includes(p)) return p.toUpperCase();
-  return "TREND";
-}
-
-function pickBadge(t) {
-  // show a second pill as “mode”
-  if (t.tags.includes("cinematic")) return "CINEMATIC";
-  if (t.tags.includes("pov")) return "POV";
-  if (t.tags.includes("deals")) return "DEALS";
-  if (t.tags.includes("local")) return "LOCAL";
-  return "SHORTS";
+  const m = id.match(/^tpl_(\d+)/);
+  return m ? `tpl_${m[1]}` : id;
 }
 
 // Boot
