@@ -1,6 +1,6 @@
 // web/assets/app.js
-// Social proof + HOT badge + hover preview + TikTok VN titles/desc + guaranteed content per category
-// 100% remote mp4 URLs
+// VideoGPT-like: poster thumbnails (frame capture + cache), autoplay modal muted, For You feed + Following
+// Still: categories, tabs, social proof, hot badges, hover preview, 9:16 framing
 
 const SND_BASE = "https://guerin.acequia.io/ai/";
 
@@ -121,24 +121,19 @@ const PROMPT_BANK = {
   ]
 };
 
-// Social proof generator (deterministic)
+// Social proof
 function formatK(n){
   if (n >= 1_000_000) return (n/1_000_000).toFixed(n%1_000_000===0?0:1) + "M";
   if (n >= 1_000) return (n/1_000).toFixed(n%1_000===0?0:1) + "K";
   return String(n);
 }
-
 function genSocial(seed) {
-  // seed deterministic -> stable across reload
-  const views = 8_000 + (seed * 97) % 2_400_000;     // 8K..~2.4M
-  const saves = 50 + (seed * 13) % 18_000;           // 50..18K
-  const score = 68 + (seed * 7) % 32;                // 68..99
+  const views = 8_000 + (seed * 97) % 2_400_000;
+  const saves = 50 + (seed * 13) % 18_000;
+  const score = 68 + (seed * 7) % 32;
   return { views, saves, score };
 }
-
-// Badge logic
 function genBadge(category, tags, seed) {
-  // ensure "viral/affiliate" more likely HOT
   const base = (seed % 100);
   if (category === "viral" || category === "affiliate") {
     if (base < 55) return { text:"🔥 HOT", cls:"hot" };
@@ -148,7 +143,7 @@ function genBadge(category, tags, seed) {
   if (tags.includes("deals") && base < 55) return { text:"🔥 HOT", cls:"hot" };
   if (tags.includes("cinematic") && base < 45) return { text:"🚀 TREND", cls:"trend" };
   if (base < 25) return { text:"✅ NEW", cls:"new" };
-  return null; // some cards have no badge -> looks more organic
+  return null;
 }
 
 function tiktokTitle(category, filename) {
@@ -158,7 +153,6 @@ function tiktokTitle(category, filename) {
   const shortCore = core.length > 28 ? core.slice(0, 28).trim() + "…" : core;
   return `${hook} • ${shortCore}`;
 }
-
 function tiktokDesc(category, filename) {
   const seed = seedNum(category + filename);
   const pattern = pick(DESC_PATTERNS[category] || DESC_PATTERNS.viral, seed);
@@ -173,7 +167,6 @@ function tiktokDesc(category, filename) {
     "Đừng lướt vội.";
   return `${pattern} • ${cta}`;
 }
-
 function pickPrompt(category, filename) {
   const pool = PROMPT_BANK[category] || PROMPT_BANK.viral;
   const n = seedNum(filename);
@@ -183,25 +176,20 @@ function pickPrompt(category, filename) {
 function buildTags(filename, idx, category) {
   const f = filename.toLowerCase();
   const tags = new Set([category, "shorts", "viral"]);
-
-  // deterministic variety (tabs)
   if (idx % 2 === 0) tags.add("cinematic");
   if (idx % 3 === 0) tags.add("pov");
   if (idx % 4 === 0) tags.add("local");
   if (idx % 5 === 0) tags.add("deals");
 
-  // content-aware
   if (f.includes("dolly") || f.includes("crane") || f.includes("orbit") || f.includes("rotate")) tags.add("cinematic");
   if (f.includes("smile") || f.includes("thumbs-up") || f.includes("toast")) tags.add("pov");
   if (f.includes("nyc") || f.includes("museum")) tags.add("local");
   if (f.includes("icecream")) tags.add("food"), tags.add("deals"), tags.add("affiliate");
 
-  // cross tags (explore)
   if (category === "business") tags.add("deals");
   if (category === "affiliate") tags.add("business");
   if (category === "food") tags.add("local");
   if (category === "tech") tags.add("tutorial");
-
   return Array.from(tags);
 }
 
@@ -220,7 +208,109 @@ function modeLabel(tags) {
   return "SHORTS";
 }
 
-// Build templates
+// ---- Poster thumbnails (frame capture + cache) ----
+const POSTER_CACHE_PREFIX = "poster:v1:";
+const POSTER_TTL_MS = 1000 * 60 * 60 * 24 * 7; // 7 days
+
+function posterKey(url){ return POSTER_CACHE_PREFIX + url; }
+
+function getCachedPoster(url){
+  try{
+    const raw = localStorage.getItem(posterKey(url));
+    if(!raw) return null;
+    const obj = JSON.parse(raw);
+    if(!obj || !obj.dataUrl || !obj.ts) return null;
+    if(Date.now() - obj.ts > POSTER_TTL_MS) return null;
+    return obj.dataUrl;
+  }catch{ return null; }
+}
+
+function setCachedPoster(url, dataUrl){
+  try{
+    localStorage.setItem(posterKey(url), JSON.stringify({ dataUrl, ts: Date.now() }));
+  }catch{
+    // ignore quota
+  }
+}
+
+// Capture a frame at ~0.4s to get a nicer poster
+async function capturePoster(url){
+  // If cross-origin blocks canvas, this will fail (tainted canvas).
+  return new Promise((resolve, reject) => {
+    const v = document.createElement("video");
+    v.crossOrigin = "anonymous"; // may help if server sends CORS headers
+    v.muted = true;
+    v.playsInline = true;
+    v.preload = "auto";
+    v.src = url;
+
+    const cleanup = () => {
+      v.pause();
+      v.removeAttribute("src");
+      v.load();
+    };
+
+    v.addEventListener("error", () => {
+      cleanup();
+      reject(new Error("video_error"));
+    }, { once:true });
+
+    v.addEventListener("loadeddata", async () => {
+      try{
+        // seek
+        const target = Math.min(0.4, (v.duration || 1) * 0.1);
+        const doShot = () => {
+          try{
+            const canvas = document.createElement("canvas");
+            // poster wide 16:9 to match card
+            const W = 960, H = 540;
+            canvas.width = W; canvas.height = H;
+            const ctx = canvas.getContext("2d");
+
+            // draw center-crop from video
+            const vw = v.videoWidth || 1280;
+            const vh = v.videoHeight || 720;
+            const srcAR = vw / vh;
+            const dstAR = W / H;
+
+            let sx=0, sy=0, sw=vw, sh=vh;
+            if(srcAR > dstAR){
+              // too wide => crop sides
+              sw = Math.floor(vh * dstAR);
+              sx = Math.floor((vw - sw)/2);
+            }else{
+              // too tall => crop top/bottom
+              sh = Math.floor(vw / dstAR);
+              sy = Math.floor((vh - sh)/2);
+            }
+
+            ctx.drawImage(v, sx, sy, sw, sh, 0, 0, W, H);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.82);
+            cleanup();
+            resolve(dataUrl);
+          }catch(err){
+            cleanup();
+            reject(err);
+          }
+        };
+
+        // If seek supported
+        if (!isNaN(v.duration) && v.duration > 0) {
+          v.currentTime = target;
+          v.addEventListener("seeked", doShot, { once:true });
+        } else {
+          // no duration info, just capture immediately
+          doShot();
+        }
+      }catch(err){
+        cleanup();
+        reject(err);
+      }
+    }, { once:true });
+  });
+}
+
+// ---- Build templates ----
 const TEMPLATES = URLS.map((url, i) => {
   const filename = filenameFromUrl(url);
   const category = CATEGORIES[i % CATEGORIES.length];
@@ -243,15 +333,18 @@ const TEMPLATES = URLS.map((url, i) => {
     prompt: pickPrompt(category, filename),
     primaryCategory: category,
     social,
-    badge
+    badge,
+    poster: null
   };
 });
 
 // ---------- DOM ----------
 const grid = document.getElementById("grid");
+const feedList = document.getElementById("feedList");
 const toastEl = document.getElementById("toast");
 const consoleStatus = document.getElementById("consoleStatus");
 const consoleSelected = document.getElementById("consoleSelected");
+const consoleMode = document.getElementById("consoleMode");
 
 const modal = document.getElementById("previewModal");
 const btnCloseModal = document.getElementById("btnCloseModal");
@@ -264,8 +357,17 @@ const pvPrompt = document.getElementById("pvPrompt");
 const btnCopyPrompt = document.getElementById("btnCopyPrompt");
 const pvProof = document.getElementById("pvProof");
 
+const btnPlayPause = document.getElementById("btnPlayPause");
+const btnMute = document.getElementById("btnMute");
+const btnUnmute = document.getElementById("btnUnmute");
+const btnCopyLink = document.getElementById("btnCopyLink");
+
+const btnForYou = document.getElementById("btnForYou");
+const btnFollowing = document.getElementById("btnFollowing");
+
 document.getElementById("btnShuffle").addEventListener("click", () => {
   currentList = shuffle([...currentList]);
+  renderFeed(currentList);
   renderGrid(currentList);
   toast("Shuffled");
 });
@@ -282,6 +384,50 @@ btnCopyPrompt.addEventListener("click", async () => {
   const text = pvPrompt.textContent || "";
   try { await navigator.clipboard.writeText(text); toast("Copied"); }
   catch { toast("Copy failed"); }
+});
+
+btnCopyLink.addEventListener("click", async () => {
+  const url = pvOpen.href || "";
+  try { await navigator.clipboard.writeText(url); toast("MP4 copied"); }
+  catch { toast("Copy failed"); }
+});
+
+btnPlayPause.addEventListener("click", async () => {
+  if (pvVideo.paused) {
+    try { await pvVideo.play(); btnPlayPause.textContent = "⏸"; } catch {}
+  } else {
+    pvVideo.pause(); btnPlayPause.textContent = "▶";
+  }
+});
+
+btnMute.addEventListener("click", () => {
+  pvVideo.muted = true;
+  btnMute.style.display = "none";
+  btnUnmute.style.display = "";
+  toast("Muted");
+});
+btnUnmute.addEventListener("click", () => {
+  pvVideo.muted = false;
+  btnUnmute.style.display = "none";
+  btnMute.style.display = "";
+  toast("Unmuted");
+});
+
+// Feed mode toggle
+let feedMode = "for_you";
+btnForYou.addEventListener("click", () => {
+  feedMode = "for_you";
+  btnForYou.classList.add("active");
+  btnFollowing.classList.remove("active");
+  consoleMode.textContent = "for_you";
+  applyFilters();
+});
+btnFollowing.addEventListener("click", () => {
+  feedMode = "following";
+  btnFollowing.classList.add("active");
+  btnForYou.classList.remove("active");
+  consoleMode.textContent = "following";
+  applyFilters();
 });
 
 let activeFilter = "all";
@@ -309,43 +455,122 @@ document.querySelectorAll(".tab").forEach(btn => {
   });
 });
 
-// Next button
+// Next in modal
 pvNext.addEventListener("click", () => {
   if (!currentList.length) return;
   currentIndex = (currentIndex + 1) % currentList.length;
   openTemplate(currentList[currentIndex]);
 });
 
-// ---------- Filtering (guarantee non-empty) ----------
+// ---------- Filtering (guarantee non-empty + feedMode) ----------
 function applyFilters() {
   let list = [...TEMPLATES];
+
+  // feed mode influences ordering/selection
+  if (feedMode === "following") {
+    // "Following": less chaotic viral; prefer aesthetic/business/tech/tutorial
+    list = list.filter(t => !t.tags.includes("affiliate") || t.tags.includes("aesthetic") || t.tags.includes("business"));
+    list.sort((a,b) => (b.social.score - a.social.score));
+  } else {
+    // "For You": more viral first
+    list.sort((a,b) => (b.social.views - a.social.views));
+  }
+
   if (activeFilter !== "all") list = list.filter(t => t.tags.includes(activeFilter));
   if (activeTab !== "all") list = list.filter(t => t.tags.includes(activeTab));
 
+  // Guarantee fallback
   if (!list.length) {
-    if (activeFilter !== "all") list = TEMPLATES.filter(t => t.tags.includes(activeFilter));
-    if (!list.length && activeTab !== "all") list = TEMPLATES.filter(t => t.tags.includes(activeTab));
-    if (!list.length) list = [...TEMPLATES];
+    list = [...TEMPLATES];
+    if (feedMode === "for_you") list.sort((a,b)=>b.social.views-a.social.views);
+    else list.sort((a,b)=>b.social.score-a.social.score);
   }
 
   currentList = list;
+  renderFeed(list);
   renderGrid(list);
 
   consoleStatus.textContent = "ready";
   consoleSelected.textContent = list.length ? `${list.length} templates` : "none";
+
+  // start generating posters lazily
+  kickPosterJobs(list);
 }
 
+// ---------- Feed render (VideoGPT-like) ----------
+function renderFeed(list) {
+  feedList.innerHTML = "";
+  const subset = list.slice(0, 24); // keep snappy
+
+  subset.forEach((t, idx) => {
+    const item = document.createElement("div");
+    item.className = "feed-item";
+    item.dataset.id = t.id;
+
+    const badgeHtml = t.badge ? `<span class="badge ${t.badge.cls}">${escapeHtml(t.badge.text)}</span>` : "";
+
+    item.innerHTML = `
+      <div class="feed-left">
+        <div class="feed-frame">
+          <div class="feed-badges">${badgeHtml}</div>
+          <img alt="poster" data-poster="${escapeHtml(t.id)}" />
+        </div>
+      </div>
+
+      <div class="feed-meta">
+        <h3>${escapeHtml(t.title)}</h3>
+        <p>${escapeHtml(t.desc)}</p>
+
+        <div class="proof-row">
+          <span class="proof-chip">👀 ${formatK(t.social.views)} views</span>
+          <span class="proof-chip">💾 ${formatK(t.social.saves)} saves</span>
+          <span class="proof-chip">📈 ${t.social.score}/100</span>
+          <span class="proof-chip">${primaryLabel(t.primaryCategory)}</span>
+          <span class="proof-chip">${modeLabel(t.tags)}</span>
+        </div>
+
+        <div class="feed-actions">
+          <button class="btn primary" data-run="${t.id}">Run</button>
+          <button class="btn ghost" data-open="${t.id}">Preview</button>
+        </div>
+
+        <div class="muted" style="font-size:12px;line-height:1.35">
+          Prompt: ${escapeHtml(t.prompt.slice(0, 110))}${t.prompt.length>110?"…":""}
+        </div>
+      </div>
+    `;
+
+    feedList.appendChild(item);
+
+    item.querySelector(`[data-run="${t.id}"]`).addEventListener("click", () => {
+      currentIndex = idx;
+      runTemplate(t);
+    });
+    item.querySelector(`[data-open="${t.id}"]`).addEventListener("click", () => {
+      currentIndex = idx;
+      openTemplate(t);
+    });
+
+    // Click poster -> open
+    item.querySelector(".feed-frame").addEventListener("click", () => {
+      currentIndex = idx;
+      openTemplate(t);
+    });
+
+    // Fill poster now if cached
+    const img = item.querySelector(`img[data-poster="${t.id}"]`);
+    const cached = getCachedPoster(t.videoUrl);
+    if (cached) img.src = cached;
+    else img.src = ""; // will fill by poster jobs
+  });
+}
+
+// ---------- Grid render (gallery) ----------
 function renderGrid(list) {
   grid.innerHTML = "";
-  if (!list.length) {
-    const empty = document.createElement("div");
-    empty.className = "card";
-    empty.innerHTML = `<div class="card-content"><h3>Không có template</h3><p>Thử đổi danh mục hoặc tab khác.</p></div>`;
-    grid.appendChild(empty);
-    return;
-  }
+  const subset = list.slice(0, 36);
 
-  list.forEach((t, idx) => {
+  subset.forEach((t, idx) => {
     const el = document.createElement("div");
     el.className = "card";
     el.dataset.id = t.id;
@@ -353,6 +578,12 @@ function renderGrid(list) {
     const badgeHtml = t.badge
       ? `<div class="badges"><span class="badge ${t.badge.cls}">${escapeHtml(t.badge.text)}</span></div>`
       : "";
+
+    const posterHtml = `
+      <div class="poster">
+        <img alt="poster" data-poster="${escapeHtml(t.id)}" />
+      </div>
+    `;
 
     const proofHtml = `
       <div class="proof-row">
@@ -372,6 +603,7 @@ function renderGrid(list) {
       </div>
 
       <div class="card-content">
+        ${posterHtml}
         <h3>${escapeHtml(t.title)}</h3>
         <p>${escapeHtml(t.desc)}</p>
 
@@ -393,7 +625,6 @@ function renderGrid(list) {
 
     grid.appendChild(el);
 
-    // Bind buttons
     el.querySelector(`[data-open="${t.id}"]`).addEventListener("click", () => {
       currentIndex = idx;
       openTemplate(t);
@@ -403,23 +634,25 @@ function renderGrid(list) {
       runTemplate(t);
     });
 
+    // Fill poster if cached
+    const img = el.querySelector(`img[data-poster="${t.id}"]`);
+    const cached = getCachedPoster(t.videoUrl);
+    if (cached) img.src = cached;
+
     // Hover preview (desktop)
     const miniVideo = el.querySelector(".hover-preview video");
     const prefersReduced = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const isFinePointer = window.matchMedia && window.matchMedia("(pointer: fine)").matches; // desktop mouse
-
+    const isFinePointer = window.matchMedia && window.matchMedia("(pointer: fine)").matches;
     if (miniVideo && !prefersReduced && isFinePointer) {
       miniVideo.src = t.videoUrl;
       miniVideo.load();
 
       let hoverTimer = null;
-
       el.addEventListener("mouseenter", () => {
         hoverTimer = setTimeout(() => {
           try { miniVideo.currentTime = 0; miniVideo.play(); } catch {}
         }, 120);
       });
-
       el.addEventListener("mouseleave", () => {
         if (hoverTimer) clearTimeout(hoverTimer);
         try { miniVideo.pause(); } catch {}
@@ -428,14 +661,64 @@ function renderGrid(list) {
   });
 }
 
-// ---------- Actions ----------
+// ---------- Poster jobs (lazy + concurrency limit) ----------
+let posterQueue = [];
+let posterRunning = 0;
+const POSTER_CONCURRENCY = 2;
+
+function kickPosterJobs(list) {
+  // enqueue only items missing cached posters
+  const missing = list
+    .slice(0, 36)
+    .filter(t => !getCachedPoster(t.videoUrl))
+    .map(t => t.videoUrl);
+
+  // dedupe
+  const seen = new Set(posterQueue);
+  missing.forEach(u => { if (!seen.has(u)) posterQueue.push(u); });
+
+  drainPosterQueue();
+}
+
+function drainPosterQueue() {
+  while (posterRunning < POSTER_CONCURRENCY && posterQueue.length) {
+    const url = posterQueue.shift();
+    posterRunning++;
+    capturePoster(url)
+      .then(dataUrl => {
+        setCachedPoster(url, dataUrl);
+        // update any <img> whose template uses this url
+        updatePostersInDOM(url, dataUrl);
+      })
+      .catch(() => {
+        // ignore (CORS-tainted etc.)
+      })
+      .finally(() => {
+        posterRunning--;
+        drainPosterQueue();
+      });
+  }
+}
+
+function updatePostersInDOM(url, dataUrl) {
+  // Find templates using this url, then update imgs by data-poster=id
+  const ids = TEMPLATES.filter(t => t.videoUrl === url).map(t => t.id);
+  ids.forEach(id => {
+    document.querySelectorAll(`img[data-poster="${CSS.escape(id)}"]`).forEach(img => {
+      if (!img.src) img.src = dataUrl;
+      else if (img.src.startsWith("data:")) img.src = dataUrl;
+    });
+  });
+}
+
+// ---------- Modal actions ----------
 function runTemplate(t) {
   consoleStatus.textContent = "running";
   consoleSelected.textContent = t.title;
-  openTemplate(t);
+  openTemplate(t, { autoplay:true });
 }
 
-function openTemplate(t) {
+function openTemplate(t, { autoplay=true } = {}) {
   pvTitle.textContent = t.title;
   pvSub.textContent = `${t.ratio} • ${primaryLabel(t.primaryCategory)} • ${modeLabel(t.tags)}`;
   pvPrompt.textContent = t.prompt || "";
@@ -446,12 +729,26 @@ function openTemplate(t) {
     <span class="proof-chip">📈 ${t.social.score}/100</span>
   `;
 
-  pvVideo.src = t.videoUrl;
-  pvVideo.load();
   pvOpen.href = t.videoUrl;
+
+  // Auto-play muted like VideoGPT
+  pvVideo.src = t.videoUrl;
+  pvVideo.muted = true;
+  btnMute.style.display = "none";
+  btnUnmute.style.display = "";
+  btnPlayPause.textContent = "⏸";
+
+  pvVideo.load();
 
   modal.classList.add("show");
   modal.setAttribute("aria-hidden", "false");
+
+  if (autoplay) {
+    pvVideo.play().catch(() => {
+      // some browsers block; keep muted and ready
+      btnPlayPause.textContent = "▶";
+    });
+  }
 }
 
 function closeModal() {
