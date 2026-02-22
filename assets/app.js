@@ -19,7 +19,8 @@ const RAW_LIST = [
   "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example8.mp4",
   "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example9.mp4",
   "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example10.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example11.mp4"
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example11.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example12.mp4",  
 ];
 
 const TITLE_BANK = [
