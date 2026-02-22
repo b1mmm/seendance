@@ -1,14 +1,17 @@
 /**
  * Minimal random video feed (GitHub Pages) — FULL app.js
  * Requirements:
- * - NO like button, NO user info (@motionmint), NO time, NO filename shown
- * - Random shuffle videos on each visit (avoid boredom)
+ * - NO like button, NO user info, NO time, NO filename shown (except consent button "Like")
+ * - Random shuffle videos on each visit
  * - Random TikTok-style hook title from BANK per video
  * - Autoplay muted; tap to pause/play; mute toggle
  * - Gift icon redirects to google.com
  * - Collect minimal session analytics (non-identifying) and send to Worker on session end
  *   Endpoint: POST https://seedance.testmail12071997.workers.dev/api/session
  *   Uses sendBeacon/keepalive
+ *
+ * Extra (Fix nhanh để “vào là có log”):
+ * - When user clicks Like (consent), send a quick event "consent_ok" immediately (keepalive)
  */
 
 const WORKER_BASE = "https://seedance.testmail12071997.workers.dev";
@@ -99,45 +102,6 @@ function toast(msg) {
   setTimeout(() => toastEl.classList.remove("show"), 900);
 }
 
-// ---------- Consent (minimal, 1-time) ----------
-function ensureConsent() {
-  const key = "vid_analytics_ok";
-  if (localStorage.getItem(key) === "1") return true;
-
-  const bar = document.createElement("div");
-  bar.style.cssText = `
-    position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;
-    padding:10px;border-radius:14px;
-    border:1px solid rgba(255,255,255,.12);
-    background:rgba(0,0,0,.7);backdrop-filter:blur(10px);
-    max-width:520px;margin:0 auto;
-    display:flex;align-items:center;justify-content:center;
-  `;
-  
-  bar.innerHTML = `
-    <button id="vidOk" style="
-      display:inline-flex;align-items:center;justify-content:center;gap:6px;
-      height:40px;padding:0 14px;line-height:1;
-      border:2px solid #000;border-radius:999px;
-      font-weight:900;font-size:14px;
-      background:#fff;color:#000;cursor:pointer;
-      box-sizing:border-box;
-    ">
-      <span>Like</span><span style="font-size:16px;line-height:1">👍</span>
-    </button>
-  `;
-
-  document.body.appendChild(bar);
-
-  bar.querySelector("#vidOk").addEventListener("click", () => {
-    localStorage.setItem(key, "1");
-    bar.remove();
-  });
-
-  return false;
-}
-ensureConsent();
-
 // ---------- Session analytics (minimal) ----------
 function getUID() {
   const key = "vid_uid";
@@ -202,6 +166,89 @@ function tickWatchTime() {
   session.watchMsByVideo[vid] = (session.watchMsByVideo[vid] || 0) + dt;
 }
 setInterval(tickWatchTime, 1000);
+
+// ---------- Quick log helper (send immediately on consent) ----------
+function sendQuickEvent(eventName) {
+  const payload = {
+    sid: SESSION_ID,
+    uid: UID,
+    event: eventName,
+    ts: Date.now(),
+    url: location.href,
+    ref: document.referrer || "",
+    lang: navigator.language || "",
+    tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
+    screen: `${window.screen?.width || 0}x${window.screen?.height || 0}`,
+    ua: (navigator.userAgent || "").slice(0, 220),
+  };
+
+  const body = JSON.stringify(payload);
+
+  // Prefer keepalive fetch for immediate event
+  try {
+    fetch(SESSION_ENDPOINT, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true
+    }).catch(() => {});
+  } catch {}
+}
+
+// ---------- Consent (minimal, 1-time) ----------
+function ensureConsent() {
+  const key = "vid_analytics_ok";
+  if (localStorage.getItem(key) === "1") return true;
+
+  // ✅ mini bar that hugs the Like button
+  const bar = document.createElement("div");
+  bar.style.cssText = `
+    position:fixed;
+    left:50%;
+    bottom:16px;
+    transform:translateX(-50%);
+    z-index:9999;
+  `;
+
+  bar.innerHTML = `
+    <button id="vidOk" style="
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+
+      height:40px;
+      padding:0 14px;
+
+      border:2px solid #000;
+      border-radius:999px;
+
+      font-weight:900;
+      font-size:14px;
+
+      background:#fff;
+      color:#000;
+      cursor:pointer;
+
+      box-sizing:border-box;
+    ">
+      <span>Like</span>
+      <span style="font-size:16px;line-height:1">👍</span>
+    </button>
+  `;
+
+  document.body.appendChild(bar);
+
+  bar.querySelector("#vidOk").addEventListener("click", () => {
+    localStorage.setItem(key, "1");
+    // ✅ Fix nhanh: bấm Like là có log ngay
+    sendQuickEvent("consent_ok");
+    bar.remove();
+  });
+
+  return false;
+}
+ensureConsent();
 
 // ---------- Feed build (random each visit) ----------
 const URLS = RAW_LIST.map(normalizeToUrl);
@@ -349,6 +396,7 @@ function sendSession() {
   }).catch(() => {});
 }
 
+// end-of-session signals
 window.addEventListener("pagehide", sendSession);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") sendSession();
@@ -358,4 +406,5 @@ document.addEventListener("visibilitychange", () => {
 render();
 setMuteAll(true);
 
+// If you want ZERO text overlay (ultra minimal), uncomment:
 // if (captionEl) captionEl.style.display = "none";
