@@ -1,47 +1,46 @@
 /**
- * Minimal random video feed (GitHub Pages) — FULL app.js
- * Requirements:
- * - NO like button, NO user info, NO time, NO filename shown (except consent button "Like")
- * - Random shuffle videos on each visit
- * - Random TikTok-style hook title from BANK per video
- * - Autoplay muted; tap to pause/play; mute toggle
- * - Gift icon redirects to google.com
- * - Collect minimal session analytics (non-identifying) and send to Worker on session end
- *   Endpoint: POST https://seedance.testmail12071997.workers.dev/api/session
- *   Uses sendBeacon/keepalive
+ * Minimal random feed + TikTok-ish auto-hide mute button + session analytics
  *
- * Extra (Fix nhanh để “vào là có log”):
- * - When user clicks Like (consent), send a quick event "consent_ok" immediately (keepalive)
+ * UI:
+ * - Only gift icon (redirect google.com)
+ * - Mute button auto-hides like TikTok:
+ *    - when playing: show briefly then auto-hide
+ *    - on user interaction: show then auto-hide
+ *    - when paused: keep visible
+ *
+ * Feed:
+ * - Shuffle videos each visit
+ * - Random Vietnamese hook titles from bank (no filenames)
+ *
+ * Analytics:
+ * - Minimal session metrics via sendBeacon to Worker /api/session
+ * - Requires one-time "OK" consent banner (safe default)
  */
 
 const WORKER_BASE = "https://seedance.testmail12071997.workers.dev";
 const SESSION_ENDPOINT = `${WORKER_BASE}/api/session`;
-/**
+
+const SND_BASE = "https://guerin.acequia.io/ai/";
 const RAW_LIST = [
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example1.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example2.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example3.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example4.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example5.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example6.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example7.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example8.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example9.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example10.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example11.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example12.mp4"
-];
- */
-const RAW_LIST = [
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m366/AQP4VXBLefooERws2IkstBzmuqrHwYCopBxiB8yHWGcgEqtrXPGlFVUapjryE-JyWrZapOo4EJaKgo_CFO8-TGsvqa9fi6xYx6zGDQnJOAIsig.mp4?_nc_cat=109&_nc_oc=AdmJXB2YmkrFENjjnrVgJvJRtxUr4mLlW8Li_Xi_h0vCilnAGxVCqooQAToqxvFHQek&_nc_sid=5e9851&_nc_ht=video.fsgn8-3.fna.fbcdn.net&_nc_ohc=tj9go5At0XIQ7kNvwErX-He&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMTI4MC5kYXNoX2gyNjQtYmFzaWMtZ2VuMl83MjBwIiwieHB2X2Fzc2V0X2lkIjoxNzAyODYzOTg0NDIxMDQ3LCJhc3NldF9hZ2VfZGF5cyI6MSwidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjExLCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=c7ea1428073d0db0&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9EQzREMTAyQTU3QzczMjE5NzM4NzdBNDM3MTc2OEE5M19tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzU3NDA3MTY2QTlBRjU5RTlBNDJGRUMwNjI3QTMwRjg2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbuoqOu3a-GBhUCKAJDMywXQCZEGJN0vGoYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUCZZKeAQA&_nc_gid=9Q1fz-3LuAoGAVo9tCHWlQ&_nc_zt=28&oh=00_AfvHqGQ1R5_93K-5s125UKfAsMk2OQFHV8NLyCntUj8R7Q&oe=69A0A46B&bitrate=2108467&tag=dash_h264-basic-gen2_720p",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m366/AQMkeiJlHwd8k1VsOeIbnOTUTyRfoACRmVD67MDYR_8iP5dKEVgwySLk8tqYv6pczJDcc8OtnoqTYJCih5Y6KcXqloYFJtN2z9JsDbhae4FSnQ.mp4?_nc_cat=100&_nc_oc=Adl78cv0vRyl92GYiJGhwTzZbDa6h_9DpFaHIXp2nSDT_AWJol5V7HujTYqf_ZbLNvA&_nc_sid=5e9851&_nc_ht=video.fdad3-4.fna.fbcdn.net&_nc_ohc=d_mngr4wRM4Q7kNvwGPPDF3&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjIzMjYxMzUzMjEyMzcxNTQsImFzc2V0X2FnZV9kYXlzIjo1MSwidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjE0LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=b744adceb6e63a45&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC83NzQ5NEJFRDBEM0I5NkE2MkUzMjdDOUMzMDkxN0ZCMl9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzVGNENGMDRGQzc2NUZGQTgzMDI0OEM1RjQ2OEE4Rjk4X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbE2qzY8uahCBUCKAJDMywXQCzMzMzMzM0YGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUCZZKeAQA&_nc_gid=ysh9pOQmkRaOhFxVAV7VgQ&_nc_zt=28&oh=00_Aftv-cVgxZquFxeeR1K4cY3kcQWvPrH2hidpqRm2df3UXg&oe=69A09F44&bitrate=1631808&tag=dash_h264-basic-gen2_720p",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m412/AQOgUtBVUnauvy2Wm7VFbikIEHrcwLbAsUoSqirH-gVDhuuVGz4ui1s_bhYYCiUrUs7zkZdQkGKbO39EEC2Sc4n3-qvQxPyk4Pz3DxT7CA.mp4?_nc_cat=105&_nc_oc=AdlS_IjSnTRN1BCl2q_9joTXdaA9eweiwApKZof9pvO4MsHJopKqvr3lpH5HM3ITPDI&_nc_sid=8bf8fe&_nc_ht=video.fsgn5-6.fna.fbcdn.net&_nc_ohc=kXp0WLy50ikQ7kNvwGKQ8kg&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTM3MTY5MTY1NDUxMDg3MCwiYXNzZXRfYWdlX2RheXMiOjg4LCJ2aV91c2VjYXNlX2lkIjoxMDEyMSwiZHVyYXRpb25fcyI6MTIsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&_nc_gid=Ko1B7PK-fVigC2soXZEP3A&_nc_zt=28&oh=00_AfvDgZgLJyGnZZvDEezCWW7ltFHfT17XymoqY3-qIG_73w&oe=69A0BF89&bitrate=193847&tag=sve_sd",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m366/AQMj-gs4XDoV-Vi1P7HULEIF2LDV9C8owAZboDVd_0mlMWdfT35qhsWefK4zJ8Qj_muK_niS6yxu5JzZIAvGYOQQA9B_fidini43cNBiLOmFVQ.mp4?_nc_cat=105&_nc_oc=AdnChMV9PFrYTvj2HFpPsUJUwkpzj3__denHVGLX1TV5sS36jy4J2JZupq5C8V8qEjY&_nc_sid=5e9851&_nc_ht=video.fdad3-4.fna.fbcdn.net&_nc_ohc=vOi1EaaG0eoQ7kNvwF32KJF&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjIwNzI5OTk0OTY4NTc5MDEsImFzc2V0X2FnZV9kYXlzIjo5OCwidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjE1LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=31302883bfe96235&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC8zMjQzMUZDMjhCQjhBM0I2RTIyMzUzRkREMjU0ODQ4NF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50L0M2NDk0MzM5NkI4Rjc3NTJCODFFNTlERDY1MzFEM0JFX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACba5InqudiuBxUCKAJDMywXQC4Q5WBBiTcYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUCZZKeAQA&_nc_gid=u4lRUQIjGky6Wx1F73HIMQ&_nc_zt=28&oh=00_Afuv0F9DDFFUaH7IYyjEc-X-oQYELaIBIGA-ZdIreh4G9w&oe=69A0BD63&bitrate=2466789&tag=dash_h264-basic-gen2_720p",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m412/AQP7PXHiwsLn1l0gtzrEGc9GmVfNbN8AGcqAAAULWjYXOhH7expAJBuAzzBtAYynuPmRdssqFb5pxAXPRnxAF4GGrtlHOf7i5UP8uvWizw.mp4?_nc_cat=106&_nc_oc=Adn7adqLEMPl51wrh7waiGOoC0heoxDukCALy9wtvHqG1IRoEVzE1PStKOXxy3pUWhU&_nc_sid=8bf8fe&_nc_ht=video.fsgn5-13.fna.fbcdn.net&_nc_ohc=uC6hZ2dK25AQ7kNvwEwV61d&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTg0NTMwMjAzNjA3NjU5MCwiYXNzZXRfYWdlX2RheXMiOjEwOCwidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjksInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&_nc_gid=iPRcOFO9epErL124C3SGGw&_nc_zt=28&oh=00_AfvTRtpJq7G6TKbUQrWaIXVPsa3XgtElN6aC7xmS6la22w&oe=69A0AED0&bitrate=513050&tag=sve_sd",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m412/AQOQMRZOv9DZpbm9mLsCS_KuyQnm4CK2TMOASgb_ydsQ-3YfcTyfvohZGiFd_gRtmC1lLlI_vXc0VSjRBkvjJllg1d39bTAm_eY8HjwAyg.mp4?_nc_cat=111&_nc_oc=AdniyBaXx5tl7uS3Pqxa9OUdAYLTws0n36OLdSyseK-iJ6-gZadfz2NK-GN5PxKvI_o&_nc_sid=8bf8fe&_nc_ht=video.fhan5-10.fna.fbcdn.net&_nc_ohc=Oh-d2RZpHo0Q7kNvwHq_sxg&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTE0OTc5MzY4Mzc1MDQ5MSwiYXNzZXRfYWdlX2RheXMiOjEzNywidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjEwLCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=u-MgwdHHHW9xXw7uWQmuBg&_nc_zt=28&oh=00_AftXoGXhTFy8ZcNS1L5oO9JKJGo9P-QQ3YyPTcy2xQv6kw&oe=69A0CC03&bitrate=586676&tag=sve_sd",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m366/AQPGETo8R2jISNli34WGl3SjupFoGK6YHz70McSoCu4U9EXG6FCe-3a3tQDGhixWKVLGriHm6GfQooLYvDBClC4RfInjFS34VIP0l3IyYB9-sg.mp4?_nc_cat=107&_nc_oc=AdndMoYVxrwEYp4n8uJbhk1eN03xRa1gxfBa2hKCy3lmtAFybX3TNbt3miukk6QJgx8&_nc_sid=5e9851&_nc_ht=video.fthd1-1.fna.fbcdn.net&_nc_ohc=WQSZ2a4l_IIQ7kNvwGwF9dN&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjI2NjEzMzA5NjA4NzI4NjEsImFzc2V0X2FnZV9kYXlzIjoxNDMsInZpX3VzZWNhc2VfaWQiOjEwMTIxLCJkdXJhdGlvbl9zIjoxNCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=f5bd9f8e93a227d3&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9FNTQ1RUFDMjdGMDc1REFFQTg1REIxMjJBQ0QxN0Q4Q19tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50Lzc2NDdEMjJCOUYzRkZBNjc0Mzc5MUIxQTBFNTI4M0E2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACa61uvo7J26CRUCKAJDMywXQCyZmZmZmZoYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUCZZKeAQA&_nc_gid=tPEKAPWTBI0oLnogNWN7tg&_nc_zt=28&oh=00_Afs-drrixyOFmXSZYSf_ObqV7Dg26NwNJ9TkdEAGVXCz9g&oe=69A0D0D5&bitrate=2023943&tag=dash_h264-basic-gen2_720p",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m412/AQObGVeYoiq7ho-DX34eP0K9S3ffJymvon4tA8M3KxKDEps86Majqdz07Hm7T8KYu6i7126VojUXwbPaVUtNYu8JpsnL4vLid9prxkVuGw.mp4?_nc_cat=111&_nc_oc=AdnfKA7xx1T63dJyXd7oOPpE4jhwVh8Gt2zUipXn1n7bxvc6BQkOvqMVdnJeW5wHbbo&_nc_sid=8bf8fe&_nc_ht=video.fhan14-3.fna.fbcdn.net&_nc_ohc=_mWD08sV-VsQ7kNvwF61HyQ&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6Mzc1MTI0NDMzODM0NjE0NSwiYXNzZXRfYWdlX2RheXMiOjE1NSwidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjIwLCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=vqiusHvU54Qr0b65e0nn3A&_nc_zt=28&oh=00_AfuqQ06E7JehG1TNhaamC3W33MzTMNPBllY7h_abvkVFsA&oe=69A0B457&bitrate=531422&tag=sve_sd",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m366/AQM4hOgJwh-ACjaBOka90D1fbJ0H9rdPSJGTw_ypJrY8j0rV8tiurRAyFsOCV1gySP0FpFVwfdB3pR92oFJYkCuKcU4y15bmaunh60z_9w.mp4?_nc_cat=110&_nc_oc=AdnMwu2MzPZWC5HfLF1ivDv20dl-HNNq5yj474WvzCo2OlKHXkYPmIv03C7AAsImtUE&_nc_sid=8bf8fe&_nc_ht=video.fhan4-4.fna.fbcdn.net&_nc_ohc=P_jLXDet3gwQ7kNvwGyGGVV&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6ODAyMzgyNDE1NTgwMTIzLCJhc3NldF9hZ2VfZGF5cyI6MTU2LCJ2aV91c2VjYXNlX2lkIjoxMDEyMSwiZHVyYXRpb25fcyI6OSwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&_nc_gid=GNb2tRUTtvN7YJgklmJXow&_nc_zt=28&oh=00_Afv3806p0nBW9MnZoIQlfyxUgJrPAkLxswbYAMQ8CC0bJw&oe=69A0D3E4&bitrate=358288&tag=sve_sd"
+  "[SND]BethGulfofMexico.mp4",
+  "[SND]Breecker-crane-over-head-with-LOTR-Nazgul.mp4",
+  "[SND]breecker-dolly-left-swipe-in-person.mp4",
+  "[SND]ed-angel-gorilla-2.mp4",
+  "[SND]ed-angel-gorilla.mp4",
+  "[SND]errand-missed-catch.mp4",
+  "[SND]Graydon_RxBurn.mp4",
+  "[SND]nyc-lateshow-icecream.mp4",
+  "https://guerin.acequia.io/ai/owen-dolly-in-smile.mp4",
+  "https://guerin.acequia.io/ai/owen-dolly-right-smile.mp4",
+  "https://guerin.acequia.io/ai/plume-bulletcam-partial-fail.mp4",
+  "https://guerin.acequia.io/ai/plume-dolly-left.mp4",
+  "https://guerin.acequia.io/ai/plume-orbit.mp4",
+  "https://guerin.acequia.io/ai/plume-rotate-right.mp4",
+  "https://guerin.acequia.io/ai/red-river-thumbs-up.mp4",
+  "https://guerin.acequia.io/ai/red-river-thumbs-up2.mp4",
+  "https://guerin.acequia.io/ai/ron-jill-dolly-out.mp4",
+  "https://guerin.acequia.io/ai/ron-jill-toast.mp4",
+  "https://guerin.acequia.io/ai/Stu-Stephen-museumHill-ai.mp4"
 ];
 
 const TITLE_BANK = [
@@ -64,7 +63,12 @@ const TITLE_BANK = [
 
 // ---------- helpers ----------
 function normalizeToUrl(item) {
-  return (item || "").toString().trim();
+  const s = (item || "").toString().trim();
+  if (s.startsWith("[SND]")) {
+    const filename = s.replace("[SND]", "").trim();
+    return `${SND_BASE}${encodeURIComponent(filename)}`;
+  }
+  return s;
 }
 
 function shuffleInPlace(arr) {
@@ -100,7 +104,6 @@ const toastEl = document.getElementById("toast");
 const btnMute = document.getElementById("btnMute");
 const btnGift = document.getElementById("btnGift");
 
-// Gift redirect
 if (btnGift) {
   btnGift.addEventListener("click", () => {
     window.location.href = "https://google.com";
@@ -114,7 +117,42 @@ function toast(msg) {
   setTimeout(() => toastEl.classList.remove("show"), 900);
 }
 
-// ---------- Session analytics (minimal) ----------
+// ---------- consent banner (safe default) ----------
+function ensureConsent() {
+  const key = "vid_analytics_ok";
+  if (localStorage.getItem(key) === "1") return true;
+
+  const bar = document.createElement("div");
+  bar.style.cssText = `
+    position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;
+    padding:12px 12px;border-radius:14px;
+    border:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.7);backdrop-filter:blur(10px);
+    color:rgba(255,255,255,.92);font-weight:800;
+    display:flex;gap:10px;align-items:center;justify-content:space-between;
+    max-width:720px;margin:0 auto;
+  `;
+  bar.innerHTML = `
+    <div style="font-size:13px;line-height:1.25">
+      Site dùng <b>analytics tối giản</b> (thời lượng xem, số video) để cải thiện trải nghiệm.
+    </div>
+    <button id="vidOk" style="
+      border:none;border-radius:12px;height:40px;padding:0 14px;
+      font-weight:900;background:#fff;color:#000;cursor:pointer
+    ">OK</button>
+  `;
+  document.body.appendChild(bar);
+
+  bar.querySelector("#vidOk").addEventListener("click", () => {
+    localStorage.setItem(key, "1");
+    bar.remove();
+  });
+
+  return false;
+}
+ensureConsent();
+
+// ---------- session analytics ----------
 function getUID() {
   const key = "vid_uid";
   let v = localStorage.getItem(key);
@@ -147,9 +185,10 @@ const session = {
   videosSeen: 0,
   videoIdsSeen: [],
   activeVideoId: null,
-  watchMsByVideo: {},  // {id: ms}
+  watchMsByVideo: {},
   lastTickAt: now(),
   muted: true,
+
   ref: document.referrer || "",
   url: location.href,
   lang: navigator.language || "",
@@ -179,90 +218,78 @@ function tickWatchTime() {
 }
 setInterval(tickWatchTime, 1000);
 
-// ---------- Quick log helper (send immediately on consent) ----------
-function sendQuickEvent(eventName) {
-  const payload = {
-    sid: SESSION_ID,
-    uid: UID,
-    event: eventName,
-    ts: Date.now(),
-    url: location.href,
-    ref: document.referrer || "",
-    lang: navigator.language || "",
-    tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
-    screen: `${window.screen?.width || 0}x${window.screen?.height || 0}`,
-    ua: (navigator.userAgent || "").slice(0, 220),
-  };
+// ---------- TikTok-ish mute auto-hide ----------
+let globalMuted = true;
+let muteHideTimer = null;
+let isPaused = false;
 
-  const body = JSON.stringify(payload);
-
-  // Prefer keepalive fetch for immediate event
-  try {
-    fetch(SESSION_ENDPOINT, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body,
-      keepalive: true
-    }).catch(() => {});
-  } catch {}
+function showMuteBtn() {
+  if (!btnMute) return;
+  btnMute.classList.remove("is-hidden");
 }
 
-// ---------- Consent (minimal, 1-time) ----------
-function ensureConsent() {
-  const key = "vid_analytics_ok";
-  if (localStorage.getItem(key) === "1") return true;
+function hideMuteBtn() {
+  if (!btnMute) return;
+  btnMute.classList.add("is-hidden");
+}
 
-  // ✅ mini bar that hugs the Like button
-  const bar = document.createElement("div");
-  bar.style.cssText = `
-    position:fixed;
-    left:50%;
-    bottom:16px;
-    transform:translateX(-50%);
-    z-index:9999;
-  `;
+function scheduleAutoHideMute(delayMs = 900) {
+  clearTimeout(muteHideTimer);
+  // When paused -> keep visible
+  if (isPaused) {
+    showMuteBtn();
+    return;
+  }
+  // When playing -> hide after delay
+  muteHideTimer = setTimeout(() => {
+    hideMuteBtn();
+  }, delayMs);
+}
 
-  bar.innerHTML = `
-    <button id="vidOk" style="
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:6px;
+function nudgeControls() {
+  // show briefly, then auto-hide
+  showMuteBtn();
+  scheduleAutoHideMute(1000);
+}
 
-      height:40px;
-      padding:0 14px;
+function setMuteAll(muted) {
+  globalMuted = muted;
+  session.muted = muted;
+  document.querySelectorAll(".slide video").forEach(v => (v.muted = muted));
+  if (btnMute) btnMute.innerHTML = muteIcon(muted);
+  toast(muted ? "Muted" : "Unmuted");
 
-      border:2px solid #000;
-      border-radius:999px;
+  // user interaction -> nudge controls (then hide if playing)
+  nudgeControls();
+}
 
-      font-weight:900;
-      font-size:14px;
+// mute button click
+if (btnMute) {
+  btnMute.addEventListener("click", (e) => {
+    e.stopPropagation(); // prevent slide click toggling pause/play
+    setMuteAll(!globalMuted);
+  });
+}
 
-      background:#fff;
-      color:#000;
-      cursor:pointer;
-
-      box-sizing:border-box;
-    ">
-      <span>Like</span>
-      <span style="font-size:16px;line-height:1">👍</span>
-    </button>
-  `;
-
-  document.body.appendChild(bar);
-
-  bar.querySelector("#vidOk").addEventListener("click", () => {
-    localStorage.setItem(key, "1");
-    // ✅ Fix nhanh: bấm Like là có log ngay
-    sendQuickEvent("consent_ok");
-    bar.remove();
+// Show controls on user interactions (TikTok style)
+function bindInteractionNudges() {
+  const events = ["touchstart", "mousemove", "pointerdown", "keydown"];
+  events.forEach(evt => {
+    window.addEventListener(evt, () => {
+      // only nudge when feed visible
+      nudgeControls();
+    }, { passive: true });
   });
 
-  return false;
+  if (feedEl) {
+    feedEl.addEventListener("scroll", () => {
+      nudgeControls();
+    }, { passive: true });
+  }
 }
-ensureConsent();
+bindInteractionNudges();
 
-// ---------- Feed build (random each visit) ----------
+// ---------- Feed build (shuffle each visit) ----------
 const URLS = RAW_LIST.map(normalizeToUrl);
 shuffleInPlace(URLS);
 
@@ -274,19 +301,6 @@ const FEED = URLS.map((url, idx) => ({
 
 // ---------- Render feed ----------
 let observer = null;
-let globalMuted = true;
-
-function setMuteAll(muted) {
-  globalMuted = muted;
-  session.muted = muted;
-  document.querySelectorAll(".slide video").forEach(v => (v.muted = muted));
-  if (btnMute) btnMute.innerHTML = muteIcon(muted);
-  toast(muted ? "Muted" : "Unmuted");
-}
-
-if (btnMute) {
-  btnMute.addEventListener("click", () => setMuteAll(!globalMuted));
-}
 
 function render() {
   if (!feedEl) return;
@@ -297,14 +311,26 @@ function render() {
     s.className = "slide";
     s.dataset.id = item.id;
     s.dataset.title = item.title;
-
     s.innerHTML = `<video playsinline muted loop preload="metadata" src="${item.url}"></video>`;
 
+    // Tap slide to toggle pause/play (TikTok-like)
     s.addEventListener("click", () => {
       const v = s.querySelector("video");
       if (!v) return;
-      if (v.paused) v.play().catch(() => {});
-      else v.pause();
+
+      if (v.paused) {
+        isPaused = false;
+        v.play().catch(() => {});
+        // playing -> show briefly then hide
+        nudgeControls();
+        scheduleAutoHideMute(700);
+      } else {
+        v.pause();
+        isPaused = true;
+        // paused -> show controls (no autohide)
+        showMuteBtn();
+        clearTimeout(muteHideTimer);
+      }
     });
 
     feedEl.appendChild(s);
@@ -330,10 +356,15 @@ function setupObserver() {
       if (!video) return;
 
       if (entry.isIntersecting) {
+        // new slide -> treat as playing
+        isPaused = false;
+
+        // pause others
         document.querySelectorAll(".slide video").forEach(v => {
           if (v !== video) v.pause();
         });
 
+        // update active + caption
         const id = slide.dataset.id || null;
         if (id && id !== session.activeVideoId) {
           session.activeVideoId = id;
@@ -341,10 +372,20 @@ function setupObserver() {
         }
         if (captionEl) captionEl.textContent = slide.dataset.title || "";
 
+        // autoplay
         try {
           video.muted = globalMuted;
           await video.play();
-        } catch {}
+
+          // show briefly then hide (TikTok style)
+          nudgeControls();
+          scheduleAutoHideMute(650);
+        } catch {
+          // if autoplay fails, treat as paused -> show controls
+          isPaused = true;
+          showMuteBtn();
+          clearTimeout(muteHideTimer);
+        }
       } else {
         video.pause();
       }
@@ -389,6 +430,7 @@ function sendSession() {
   if (sent) return;
   sent = true;
 
+  // require consent to send
   if (localStorage.getItem("vid_analytics_ok") !== "1") return;
 
   const payload = buildSessionPayload();
@@ -408,15 +450,19 @@ function sendSession() {
   }).catch(() => {});
 }
 
-// end-of-session signals
 window.addEventListener("pagehide", sendSession);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") sendSession();
 });
 
-// ---------- Init ----------
+// ---------- init ----------
 render();
+if (btnMute) btnMute.innerHTML = muteIcon(true);
 setMuteAll(true);
 
-// If you want ZERO text overlay (ultra minimal), uncomment:
+// Start hidden once first play happens; until then, allow user see it briefly
+showMuteBtn();
+scheduleAutoHideMute(1200);
+
+// If you want ULTRA minimal (no caption text), uncomment:
 // if (captionEl) captionEl.style.display = "none";
