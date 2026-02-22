@@ -14,7 +14,6 @@
 const WORKER_BASE = "https://seedance.testmail12071997.workers.dev";
 const SESSION_ENDPOINT = `${WORKER_BASE}/api/session`;
 
-const SND_BASE = "https://guerin.acequia.io/ai/";
 const RAW_LIST = [
   "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example1.mp4",
   "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example2.mp4",
@@ -50,12 +49,7 @@ const TITLE_BANK = [
 
 // ---------- helpers ----------
 function normalizeToUrl(item) {
-  const s = (item || "").toString().trim();
-  if (s.startsWith("[SND]")) {
-    const filename = s.replace("[SND]", "").trim();
-    return `${SND_BASE}${encodeURIComponent(filename)}`;
-  }
-  return s;
+  return (item || "").toString().trim();
 }
 
 function shuffleInPlace(arr) {
@@ -107,7 +101,6 @@ function toast(msg) {
 
 // ---------- Consent (minimal, 1-time) ----------
 function ensureConsent() {
-  // Consent is optional for MVP; if you want NO banner, just return true.
   const key = "vid_analytics_ok";
   if (localStorage.getItem(key) === "1") return true;
 
@@ -122,15 +115,17 @@ function ensureConsent() {
     max-width:720px;margin:0 auto;
   `;
 
+  // ✅ Optimized Like button (fit title + icon)
   bar.innerHTML = `
     <button id="vidOk" style="
       display:flex;align-items:center;gap:6px;
       height:42px;padding:0 16px;line-height:1;
-      border:2px solid #fff;border-radius:999px;
+      border:2px solid #000;border-radius:999px;
       font-weight:900;font-size:14px;
       background:#fff;color:#000;cursor:pointer;
     "><span>Like</span><span style="font-size:16px">👍</span></button>
   `;
+
   document.body.appendChild(bar);
 
   bar.querySelector("#vidOk").addEventListener("click", () => {
@@ -243,10 +238,8 @@ function render() {
     s.dataset.id = item.id;
     s.dataset.title = item.title;
 
-    // Note: autoplay policy requires muted to autoplay reliably
     s.innerHTML = `<video playsinline muted loop preload="metadata" src="${item.url}"></video>`;
 
-    // Tap slide to pause/play
     s.addEventListener("click", () => {
       const v = s.querySelector("video");
       if (!v) return;
@@ -257,7 +250,6 @@ function render() {
     feedEl.appendChild(s);
   });
 
-  // init first active
   const first = document.querySelector(".slide");
   if (first?.dataset?.id) {
     session.activeVideoId = first.dataset.id;
@@ -278,12 +270,10 @@ function setupObserver() {
       if (!video) return;
 
       if (entry.isIntersecting) {
-        // pause others
         document.querySelectorAll(".slide video").forEach(v => {
           if (v !== video) v.pause();
         });
 
-        // update active + seen + caption
         const id = slide.dataset.id || null;
         if (id && id !== session.activeVideoId) {
           session.activeVideoId = id;
@@ -291,13 +281,10 @@ function setupObserver() {
         }
         if (captionEl) captionEl.textContent = slide.dataset.title || "";
 
-        // autoplay
         try {
           video.muted = globalMuted;
           await video.play();
-        } catch {
-          // ignored
-        }
+        } catch {}
       } else {
         video.pause();
       }
@@ -342,7 +329,6 @@ function sendSession() {
   if (sent) return;
   sent = true;
 
-  // Require consent to send (safe default). If you want to send regardless, remove this if-block.
   if (localStorage.getItem("vid_analytics_ok") !== "1") return;
 
   const payload = buildSessionPayload();
@@ -362,7 +348,6 @@ function sendSession() {
   }).catch(() => {});
 }
 
-// end-of-session signals
 window.addEventListener("pagehide", sendSession);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") sendSession();
@@ -372,5 +357,4 @@ document.addEventListener("visibilitychange", () => {
 render();
 setMuteAll(true);
 
-// If you want ZERO text overlay (ultra minimal), uncomment:
 // if (captionEl) captionEl.style.display = "none";
