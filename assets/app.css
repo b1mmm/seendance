@@ -1,7 +1,10 @@
 :root{
   --bg:#000;
   --fg:#fff;
-  --muted2: rgba(255,255,255,.55);
+  --stroke: rgba(255,255,255,.10);
+  --glass: rgba(20,20,20,.55);
+  --muted: rgba(255,255,255,.78);
+
   --safeTop: env(safe-area-inset-top);
   --safeBottom: env(safe-area-inset-bottom);
 }
@@ -26,7 +29,7 @@ body{
   overflow:hidden;
 }
 
-/* TOPBAR: ONLY GIFT, no logo/menu */
+/* TOPBAR: ONLY gift */
 .topbar{
   position:fixed;
   top:0; left:0; right:0;
@@ -35,16 +38,15 @@ body{
   display:flex;
   align-items:center;
   justify-content:space-between;
-  background: linear-gradient(to bottom, rgba(0,0,0,.82), rgba(0,0,0,.35), rgba(0,0,0,0));
+  background: linear-gradient(to bottom, rgba(0,0,0,.82), rgba(0,0,0,.30), rgba(0,0,0,0));
   pointer-events:none;
 }
 .topbar > *{pointer-events:auto}
 .top-spacer{width:1px;height:1px;opacity:0}
 
-.top-actions{display:flex;gap:14px;align-items:center}
 .icon-btn{
   width:44px;height:44px;
-  border: none;
+  border:none;
   background: transparent;
   color: var(--fg);
   display:grid;
@@ -53,18 +55,11 @@ body{
 }
 .icon-btn svg{width:26px;height:26px}
 
-/* MAIN */
 .main{
   position:absolute;
   inset:0;
   width:100%;
   height:100svh;
-}
-.view{
-  position:absolute;
-  inset:0;
-  width:100%;
-  height:100%;
 }
 
 /* FEED */
@@ -77,6 +72,7 @@ body{
   overflow-x:hidden !important;
   scroll-snap-type: y mandatory;
   -webkit-overflow-scrolling: touch;
+  background:#000;
 }
 .slide{
   position:relative;
@@ -91,20 +87,18 @@ body{
   inset:0;
   width:100%;
   height:100%;
-  object-fit: cover;
+  object-fit: cover; /* TikTok style */
   background:#000;
 }
-
-/* vignette */
 .slide::after{
   content:"";
   position:absolute;
   inset:0;
   pointer-events:none;
-  background: radial-gradient(120% 80% at 50% 30%, rgba(0,0,0,0) 0%, rgba(0,0,0,.35) 55%, rgba(0,0,0,.70) 100%);
+  background: radial-gradient(120% 80% at 50% 30%, rgba(0,0,0,0) 0%, rgba(0,0,0,.32) 55%, rgba(0,0,0,.72) 100%);
 }
 
-/* left mute */
+/* MUTE FAB */
 .mute-fab{
   position: fixed;
   left: 16px;
@@ -112,8 +106,8 @@ body{
   z-index: 30;
   width:56px;height:56px;
   border-radius:999px;
-  border:1px solid rgba(255,255,255,.08);
-  background: rgba(20,20,20,.55);
+  border:1px solid var(--stroke);
+  background: var(--glass);
   color: var(--fg);
   display:grid;
   place-items:center;
@@ -122,61 +116,30 @@ body{
 }
 .mute-fab svg{width:24px;height:24px}
 
-/* right like */
-.right-like{
-  position: fixed;
-  right: 18px;
-  top: 50%;
-  transform: translateY(-5%);
-  z-index: 30;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:10px;
-}
-.like-fab{
-  width:64px;height:64px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.08);
-  background: rgba(20,20,20,.55);
-  color: var(--fg);
-  display:grid;
-  place-items:center;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-.like-fab svg{width:26px;height:26px}
-.like-count{
-  font-weight: 900;
-  font-size: 16px;
-  color: rgba(255,255,255,.9);
-}
-
-/* bottom meta */
-.meta{
+/* Minimal caption */
+.caption{
   position: fixed;
   left: 16px;
-  right: 90px;
-  bottom: calc(22px + var(--safeBottom));
+  right: 16px;
+  bottom: calc(18px + var(--safeBottom));
   z-index: 30;
-}
-.meta-row{display:flex;align-items:center;gap:12px;margin-bottom:10px}
-.avatar{
-  width:44px;height:44px;
-  border-radius:999px;
-  border:1px solid rgba(255,255,255,.12);
-  background: radial-gradient(circle at 30% 30%, rgba(111,179,255,.45), rgba(97,255,177,.18));
-}
-.handle{font-weight:900;font-size:20px;line-height:1}
-.time{margin-top:4px;color:var(--muted2);font-size:14px}
-.title{font-weight: 900; font-size: 22px; letter-spacing:.2px}
 
-/* toast */
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: .2px;
+  color: rgba(255,255,255,.92);
+  text-shadow: 0 10px 28px rgba(0,0,0,.65);
+  user-select:none;
+  pointer-events:none;
+  line-height:1.2;
+}
+
+/* Toast */
 .toast{
   position: fixed;
   left:50%;
   transform: translateX(-50%);
-  bottom: calc(26px + var(--safeBottom));
+  bottom: calc(70px + var(--safeBottom));
   z-index: 80;
   display:none;
   padding: 10px 12px;
