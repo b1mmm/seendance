@@ -1,21 +1,11 @@
 /**
- * Like tracking:
- * - Persist local in localStorage (survive refresh)
- * - Send to Worker API -> KV store (tracking)
- *
- * Worker base:
- *   https://seedance.testmail12071997.workers.dev
- *
- * Expected endpoint:
- *   POST /api/like
- * Body:
- *   { feedId, delta, total, uid, ts, ua }
- *
- * If worker returns non-200 or {ok:false}, UI still works (local saved).
+ * Minimal random feed:
+ * - Shuffle videos every page load (avoid boredom)
+ * - Use random Vietnamese TikTok-style titles from BANK (no filename shown)
+ * - Autoplay muted (best for mobile)
+ * - Tap video to pause/play
+ * - Gift icon redirects to google.com
  */
-
-const WORKER_BASE = "https://seedance.testmail12071997.workers.dev";
-const LIKE_ENDPOINT = `${WORKER_BASE}/api/like`;
 
 const SND_BASE = "https://guerin.acequia.io/ai/";
 const RAW_LIST = [
@@ -40,6 +30,24 @@ const RAW_LIST = [
   "https://guerin.acequia.io/ai/Stu-Stephen-museumHill-ai.mp4"
 ];
 
+const TITLE_BANK = [
+  "ĐỪNG LƯỚT! Xem tới cuối là hiểu 😳",
+  "ỦA CÁI GÌ VẬY TRỜI… 😱",
+  "Cảnh này mà lên TikTok là cháy 🔥",
+  "Nhìn 3 giây là dính…",
+  "Cú plot twist làm mình đứng hình 😵",
+  "Ai nghĩ ra cái này vậy trời 😂",
+  "Chỉ 1 pha thôi mà ‘đỉnh’ thật sự!",
+  "Đoạn này ai cũng xem lại 2 lần 😭",
+  "Coi xong là muốn thử liền!",
+  "Không ngờ nó lại ra thế này…",
+  "Mượt kiểu điện ảnh luôn 😮‍💨",
+  "Cảnh ‘ảo’ nhất hôm nay đây!",
+  "Chốt đơn vibe này ngay!",
+  "Tự nhiên nổi da gà…",
+  "Cảnh này mà dựng quảng cáo thì auto win!"
+];
+
 function normalizeToUrl(item) {
   const s = item.trim();
   if (s.startsWith("[SND]")) {
@@ -48,67 +56,18 @@ function normalizeToUrl(item) {
   }
   return s;
 }
-const URLS = RAW_LIST.map(normalizeToUrl);
 
-function filenameFromUrl(url) {
-  try {
-    const u = new URL(url);
-    const last = u.pathname.split("/").pop() || "video.mp4";
-    return decodeURIComponent(last);
-  } catch { return "video.mp4"; }
-}
-function baseName(filename){ return filename.replace(/\.mp4$/i, ""); }
-
-const feedEl = document.getElementById("feed");
-const toastEl = document.getElementById("toast");
-
-const btnGift = document.getElementById("btnGift");
-const btnMuteFab = document.getElementById("btnMuteFab");
-const btnLikeFab = document.getElementById("btnLikeFab");
-
-const likeCountEl = document.getElementById("likeCount");
-const metaTime = document.getElementById("metaTime");
-const metaTitle = document.getElementById("metaTitle");
-
-// Gift click -> redirect google.com
-btnGift.addEventListener("click", () => {
-  window.location.href = "https://google.com";
-});
-
-function toast(msg){
-  toastEl.textContent = msg;
-  toastEl.classList.add("show");
-  setTimeout(()=>toastEl.classList.remove("show"), 1100);
-}
-
-// simple stable uid for tracking
-function getUID(){
-  const key = "vid_uid";
-  let v = localStorage.getItem(key);
-  if(!v){
-    v = (crypto?.randomUUID?.() || `u_${Math.random().toString(16).slice(2)}_${Date.now()}`);
-    localStorage.setItem(key, v);
+function shuffleInPlace(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
   }
-  return v;
+  return arr;
 }
-const UID = getUID();
 
-// FEED data
-const FEED = URLS.map((url, i)=> {
-  const fn = filenameFromUrl(url);
-  const title = (i===0) ? "What Still Watches" : baseName(fn).replace(/[_-]+/g," ");
-  const time = ["last month","2 weeks ago","yesterday","today"][i%4];
-  return { id:`v${i+1}`, url, title, time };
-});
-
-// Like state (persist)
-const LIKE_KEY = "vid_like_total";
-let likesTotal = Number(localStorage.getItem(LIKE_KEY) || "0");
-likeCountEl.textContent = String(likesTotal);
-
-let globalMuted = true;
-let observer = null;
-let currentFeedId = FEED[0]?.id || "v1";
+function pickRandom(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 function muteIcon(muted){
   return muted
@@ -122,76 +81,69 @@ function muteIcon(muted){
       </svg>`;
 }
 
+const feedEl = document.getElementById("feed");
+const captionEl = document.getElementById("caption");
+const toastEl = document.getElementById("toast");
+const btnMute = document.getElementById("btnMute");
+const btnGift = document.getElementById("btnGift");
+
+btnGift.addEventListener("click", ()=> {
+  window.location.href = "https://google.com";
+});
+
+function toast(msg){
+  toastEl.textContent = msg;
+  toastEl.classList.add("show");
+  setTimeout(()=>toastEl.classList.remove("show"), 900);
+}
+
+let globalMuted = true;
+let observer = null;
+
+// Build shuffled feed each visit
+const URLS = RAW_LIST.map(normalizeToUrl);
+shuffleInPlace(URLS);
+
+// Assign a random title per slide (no filenames)
+const FEED = URLS.map((url, idx) => ({
+  id: `v${idx+1}`,
+  url,
+  title: pickRandom(TITLE_BANK)
+}));
+
 function setMuteAll(muted){
   globalMuted = muted;
-  document.querySelectorAll(".slide video").forEach(v=>v.muted = muted);
-  btnMuteFab.innerHTML = muteIcon(muted);
+  document.querySelectorAll(".slide video").forEach(v => v.muted = muted);
+  btnMute.innerHTML = muteIcon(muted);
   toast(muted ? "Muted" : "Unmuted");
 }
 
-btnMuteFab.addEventListener("click", ()=> setMuteAll(!globalMuted));
+btnMute.addEventListener("click", ()=> setMuteAll(!globalMuted));
 
-async function sendLikeToWorker(payload){
-  try{
-    const res = await fetch(LIKE_ENDPOINT, {
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify(payload)
-    });
-    const data = await res.json().catch(()=>({}));
-    if(!res.ok || data?.ok !== true){
-      // worker may not have endpoint yet
-      return { ok:false, error: data?.error || `http_${res.status}` };
-    }
-    return { ok:true };
-  }catch(e){
-    return { ok:false, error: "network" };
-  }
-}
-
-btnLikeFab.addEventListener("click", async ()=>{
-  // update local
-  likesTotal += 1;
-  likeCountEl.textContent = String(likesTotal);
-  localStorage.setItem(LIKE_KEY, String(likesTotal));
-
-  // send to worker KV
-  const payload = {
-    uid: UID,
-    feedId: currentFeedId,
-    delta: 1,
-    total: likesTotal,
-    ts: Date.now(),
-    ua: navigator.userAgent
-  };
-
-  const r = await sendLikeToWorker(payload);
-  if(r.ok) toast("Liked ✅");
-  else toast("Liked (local)"); // still works even if worker not ready
-});
-
-function renderFeed(){
+function render(){
   feedEl.innerHTML = "";
-  FEED.forEach((item)=>{
+
+  FEED.forEach(item => {
     const s = document.createElement("section");
     s.className = "slide";
     s.dataset.id = item.id;
+    s.dataset.title = item.title;
     s.innerHTML = `<video playsinline muted loop preload="metadata" src="${item.url}"></video>`;
     feedEl.appendChild(s);
 
-    // tap to pause/play
+    // Tap to pause/play
     s.addEventListener("click", ()=>{
       const v = s.querySelector("video");
       if(!v) return;
-      if(v.paused){ v.play().catch(()=>{}); }
+      if(v.paused) v.play().catch(()=>{});
       else v.pause();
     });
   });
 
-  setupAutoplayObserver();
+  setupObserver();
 }
 
-function setupAutoplayObserver(){
+function setupObserver(){
   if (observer) observer.disconnect();
 
   observer = new IntersectionObserver((entries)=>{
@@ -201,21 +153,15 @@ function setupAutoplayObserver(){
       if(!video) return;
 
       if(entry.isIntersecting){
-        // pause others
+        // Pause others
         document.querySelectorAll(".slide video").forEach(v=>{
           if(v !== video) v.pause();
         });
 
-        // update meta
-        const id = slide.dataset.id;
-        const data = FEED.find(x=>x.id===id);
-        if(data){
-          currentFeedId = data.id;
-          metaTitle.textContent = data.title;
-          metaTime.textContent = data.time;
-        }
+        // Update caption with random title (already assigned)
+        captionEl.textContent = slide.dataset.title || "";
 
-        // autoplay
+        // Autoplay
         try{
           video.muted = globalMuted;
           await video.play();
@@ -226,9 +172,12 @@ function setupAutoplayObserver(){
     });
   }, { root: feedEl, threshold: 0.66 });
 
-  document.querySelectorAll(".slide").forEach(s=>observer.observe(s));
+  document.querySelectorAll(".slide").forEach(s => observer.observe(s));
 }
 
-// init
-renderFeed();
+// Init
+render();
 setMuteAll(true);
+
+// Optional: if you want ZERO text on screen, uncomment next line:
+// captionEl.style.display = "none";
