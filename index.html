@@ -3,66 +3,36 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Video Feed</title>
+  <title>Feed</title>
   <link rel="stylesheet" href="./assets/app.css" />
 </head>
 <body>
   <div class="app" id="app">
 
-    <!-- TOP BAR: NO LOGO, NO MENU. ONLY GIFT -->
+    <!-- TOP: ONLY GIFT -->
     <header class="topbar">
       <div class="top-spacer"></div>
 
-      <div class="top-actions">
-        <!-- Gift / Explore (ONLY) -->
-        <button class="icon-btn" id="btnGift" aria-label="Gift">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M20 12v9H4v-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M2 7h20v5H2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            <path d="M12 7v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M12 7c-1.8 0-3-1.2-3-2.5S10.2 2 12 2c1.1 0 2 .6 2.6 1.4.6-.8 1.5-1.4 2.6-1.4 1.8 0 3 1.2 3 2.5S13.8 7 12 7z"
-              fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-          </svg>
-        </button>
-      </div>
+      <button class="icon-btn" id="btnGift" aria-label="Gift">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 12v9H4v-9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M2 7h20v5H2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M12 7v14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M12 7c-1.8 0-3-1.2-3-2.5S10.2 2 12 2c1.1 0 2 .6 2.6 1.4.6-.8 1.5-1.4 2.6-1.4 1.8 0 3 1.2 3 2.5S13.8 7 12 7z"
+            fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </header>
 
-    <!-- FEED VIEW -->
+    <!-- FEED -->
     <main class="main">
-      <section class="view view-feed" id="viewFeed" aria-label="Feed">
-        <div class="feed" id="feed"></div>
+      <div class="feed" id="feed"></div>
 
-        <!-- left mute -->
-        <button class="mute-fab" id="btnMuteFab" aria-label="Mute">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="M11 5L6 9H3v6h3l5 4V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            <path d="M23 9l-6 6M17 9l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-        </button>
+      <!-- MUTE (keep for autoplay) -->
+      <button class="mute-fab" id="btnMute" aria-label="Mute toggle"></button>
 
-        <!-- right like -->
-        <div class="right-like">
-          <button class="like-fab" id="btnLikeFab" aria-label="Like">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M20 10c0-2-2-3-4-3h-3l.5-2.5c.2-1-1-2-2-1l-5 5V22h9c1 0 2-1 2-2l2-9z"
-                fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
-            </svg>
-          </button>
-          <div class="like-count" id="likeCount">0</div>
-        </div>
-
-        <!-- bottom meta -->
-        <div class="meta">
-          <div class="meta-row">
-            <div class="avatar" aria-hidden="true"></div>
-            <div>
-              <div class="handle">@motionmint</div>
-              <div class="time" id="metaTime">last month</div>
-            </div>
-          </div>
-          <div class="title" id="metaTitle">What Still Watches</div>
-        </div>
-      </section>
+      <!-- Minimal caption (random title bank) -->
+      <div class="caption" id="caption"></div>
     </main>
 
     <div class="toast" id="toast" aria-live="polite"></div>
