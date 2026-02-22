@@ -113,6 +113,11 @@ body{
   place-items:center;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+
+  /* Tap hint animation */
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: opacity .28s ease, transform .28s ease;
 }
 .mute-fab svg{width:24px;height:24px}
 
@@ -132,6 +137,11 @@ body{
   user-select:none;
   pointer-events:none;
   line-height:1.2;
+
+  /* Tap hint animation */
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity .28s ease, transform .28s ease;
 }
 
 /* Toast */
@@ -152,3 +162,20 @@ body{
   max-width: 92vw;
 }
 .toast.show{display:block}
+
+/* ✅ Tap hint hidden state (JS toggles this class) */
+.is-hidden{
+  opacity: 0 !important;
+  transform: translateY(8px) scale(.98) !important;
+  pointer-events: none !important;
+}
+.caption.is-hidden{
+  transform: translateY(10px) !important;
+}
+
+/* Optional: reduce motion */
+@media (prefers-reduced-motion: reduce){
+  .mute-fab, .caption{
+    transition: none !important;
+  }
+}
