@@ -1,5 +1,5 @@
-// VideoGPT-like feed (UI/UX): full-screen vertical slides, autoplay muted,
-// tap to pause/play, swipe scroll, like button, menu sheet.
+// UI tuned to match screenshots: right drawer menu + explore search/chips + full-screen feed.
+// Videos are remote-only (your list). Autoplay muted.
 
 const SND_BASE = "https://guerin.acequia.io/ai/";
 const RAW_LIST = [
@@ -42,219 +42,242 @@ function filenameFromUrl(url) {
   } catch { return "video.mp4"; }
 }
 function baseName(filename){ return filename.replace(/\.mp4$/i, ""); }
-function humanTitle(filename){
-  const s = baseName(filename).replace(/[_-]+/g," ").trim();
-  const t = s.split(" ").filter(Boolean).map(w => w.length<=2 ? w.toUpperCase() : (w[0].toUpperCase()+w.slice(1))).join(" ");
-  // TikTok VN style hook
-  const hooks = ["ĐỪNG LƯỚT!","ỦA GÌ VẬY TRỜI 😳","Xem tới cuối…","Cái này đang hot 🔥","Nhìn phát nghiện…"];
-  const hook = hooks[(t.length + filename.length) % hooks.length];
-  return `${hook} ${t}`;
-}
-
-function randInt(min,max){ return Math.floor(Math.random()*(max-min+1))+min; }
-
-const FEED = URLS.map((url, i) => {
-  const fn = filenameFromUrl(url);
-  return {
-    id: `v${i+1}`,
-    url,
-    handle: "@motionmint",
-    time: ["last month","2 weeks ago","yesterday","today"][i % 4],
-    title: humanTitle(fn),
-    desc: ["Cinematic 9:16 • auto loop • vibe giống VideoGPT","Demo feed — bấm 1 cái là xem","Mẫu video để test UI/UX trên mobile"][i%3],
-    likes: 0
-  };
-});
 
 const feedEl = document.getElementById("feed");
 const toastEl = document.getElementById("toast");
 
-const sheet = document.getElementById("sheet");
-const btnMenu = document.getElementById("btnMenu");
-const btnCreate = document.getElementById("btnCreate");
-const btnBottomMenu = document.getElementById("btnBottomMenu");
-const btnRefresh = document.getElementById("btnRefresh");
+const viewFeed = document.getElementById("viewFeed");
+const viewExplore = document.getElementById("viewExplore");
 
-const goForYou = document.getElementById("goForYou");
-const goFollowing = document.getElementById("goFollowing");
-const goShuffle = document.getElementById("goShuffle");
-const goAbout = document.getElementById("goAbout");
+const btnMenu = document.getElementById("btnMenu");
+const btnExplore = document.getElementById("btnExplore");
+
+const drawer = document.getElementById("drawer");
+const drawerScrim = document.getElementById("drawerScrim");
+const drawerClose = document.getElementById("drawerClose");
+const drawerList = document.getElementById("drawerList");
+
+const btnMuteFab = document.getElementById("btnMuteFab");
+const btnLikeFab = document.getElementById("btnLikeFab");
+const likeCountEl = document.getElementById("likeCount");
+const metaTime = document.getElementById("metaTime");
+const metaTitle = document.getElementById("metaTitle");
+
+const chipsEl = document.getElementById("chips");
+const searchInput = document.getElementById("searchInput");
+const btnBackToFeed = document.getElementById("btnBackToFeed");
+
+const btnApple = document.getElementById("btnApple");
+const btnGoogle = document.getElementById("btnGoogle");
+const btnSignIn = document.getElementById("btnSignIn");
+
+// chips list like screenshot
+const CHIP_LIST = [
+  "All","Human (Cartoon)","Animal (Cartoon)","Robot (Cartoon)","Fantasy","Politician",
+  "Bible","Lifestyle","Politician Calling","Baby Politician","Celebrities Calling",
+  "Street Interview","Minecraft","Toddler","Caricature","Memes","Anime",
+  "LAIKA Style","3D Animal","Creepy Characters","80's Space Viking"
+];
+
+let likes = 0;
+let globalMuted = true;
+let observer = null;
 
 function toast(msg){
   toastEl.textContent = msg;
   toastEl.classList.add("show");
-  setTimeout(()=>toastEl.classList.remove("show"), 1200);
+  setTimeout(()=>toastEl.classList.remove("show"), 1100);
 }
 
-function openSheet(){
-  sheet.classList.add("show");
-  sheet.setAttribute("aria-hidden","false");
+function openDrawer(){
+  drawer.classList.add("show");
+  drawer.setAttribute("aria-hidden","false");
 }
-function closeSheet(){
-  sheet.classList.remove("show");
-  sheet.setAttribute("aria-hidden","true");
+function closeDrawer(){
+  drawer.classList.remove("show");
+  drawer.setAttribute("aria-hidden","true");
 }
-sheet.addEventListener("click", (e)=>{
-  const close = e.target?.dataset?.close === "sheet";
-  if (close) closeSheet();
-});
 
-btnMenu.addEventListener("click", openSheet);
-btnBottomMenu.addEventListener("click", openSheet);
-btnCreate.addEventListener("click", ()=>toast("Demo: Create (coming soon)"));
+btnMenu.addEventListener("click", openDrawer);
+drawerScrim.addEventListener("click", closeDrawer);
+drawerClose.addEventListener("click", closeDrawer);
 
-btnRefresh.addEventListener("click", ()=>{
-  toast("Reloading…");
-  setTimeout(()=>location.reload(), 350);
-});
+drawerList.addEventListener("click", (e)=>{
+  const btn = e.target.closest(".drawer-item");
+  if(!btn) return;
+  drawerList.querySelectorAll(".drawer-item").forEach(x=>x.classList.remove("active"));
+  btn.classList.add("active");
+  closeDrawer();
 
-goForYou.addEventListener("click", ()=>{ toast("For You"); closeSheet(); });
-goFollowing.addEventListener("click", ()=>{ toast("Following (demo)"); closeSheet(); });
-goShuffle.addEventListener("click", ()=>{
-  closeSheet();
-  toast("Shuffle");
-  shuffleFeed();
-});
-goAbout.addEventListener("click", ()=>{
-  closeSheet();
-  toast("UI kiểu Video Feed (demo)");
-});
-
-function shuffle(arr){
-  for(let i=arr.length-1;i>0;i--){
-    const j=Math.floor(Math.random()*(i+1));
-    [arr[i],arr[j]]=[arr[j],arr[i]];
+  // basic routing demo
+  const route = btn.dataset.route;
+  if(route === "trending" || route === "home") {
+    showFeed();
+  } else if(route === "shows") {
+    showExplore();
+  } else {
+    toast(route);
   }
-  return arr;
+});
+
+// auth buttons (demo)
+btnApple.addEventListener("click", ()=>toast("Apple sign-in (demo)"));
+btnGoogle.addEventListener("click", ()=>toast("Google sign-in (demo)"));
+btnSignIn.addEventListener("click", ()=>toast("Sign in (demo)"));
+
+// explore toggle
+btnExplore.addEventListener("click", showExplore);
+btnBackToFeed.addEventListener("click", showFeed);
+
+function showExplore(){
+  viewFeed.classList.add("hide");
+  viewExplore.classList.add("show");
+  // pause all videos
+  document.querySelectorAll(".slide video").forEach(v=>v.pause());
+  toast("Explore");
+}
+function showFeed(){
+  viewExplore.classList.remove("show");
+  viewFeed.classList.remove("hide");
+  toast("Trending");
+  // resume current visible
+  setupAutoplayObserver();
 }
 
-function shuffleFeed(){
-  // keep current scroll slide index near top to feel natural
-  const items = Array.from(feedEl.querySelectorAll(".slide"));
-  const topIndex = Math.max(0, Math.round(feedEl.scrollTop / window.innerHeight));
-  // shuffle data
-  shuffle(FEED);
-  render();
-  // restore approx position
-  setTimeout(()=>{
-    feedEl.scrollTo({ top: topIndex * window.innerHeight, behavior:"instant" });
-  }, 0);
+function renderChips(){
+  chipsEl.innerHTML = "";
+  CHIP_LIST.forEach((label, idx)=>{
+    const b = document.createElement("button");
+    b.className = "chip" + (idx===0 ? " active" : "");
+    b.textContent = label;
+    b.addEventListener("click", ()=>{
+      chipsEl.querySelectorAll(".chip").forEach(x=>x.classList.remove("active"));
+      b.classList.add("active");
+      toast(label);
+    });
+    chipsEl.appendChild(b);
+  });
 }
+renderChips();
 
-function makeIconMute(muted){
-  return muted
-    ? `<svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M23 9l-6 6M17 9l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`
-    : `<svg viewBox="0 0 24 24"><path d="M11 5L6 9H3v6h3l5 4V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M15 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`;
-}
+searchInput.addEventListener("input", ()=>{
+  // lightweight filter highlight only
+  const q = searchInput.value.trim().toLowerCase();
+  const chips = Array.from(chipsEl.querySelectorAll(".chip"));
+  if(!q){
+    chips.forEach((c,i)=>c.style.display="");
+    return;
+  }
+  chips.forEach(c=>{
+    const ok = c.textContent.toLowerCase().includes(q);
+    c.style.display = ok ? "" : "none";
+  });
+});
 
-function render(){
+// FEED
+const FEED = URLS.map((url, i)=> {
+  const fn = filenameFromUrl(url);
+  const title = (i===0) ? "What Still Watches" : baseName(fn).replace(/[_-]+/g," ");
+  const time = ["last month","2 weeks ago","yesterday","today"][i%4];
+  return { id:`v${i+1}`, url, title, time };
+});
+
+function renderFeed(){
   feedEl.innerHTML = "";
+  FEED.forEach((item)=>{
+    const s = document.createElement("section");
+    s.className = "slide";
+    s.dataset.id = item.id;
+    s.innerHTML = `<video playsinline muted loop preload="metadata" src="${item.url}"></video>`;
+    feedEl.appendChild(s);
 
-  FEED.forEach((v, idx)=>{
-    const slide = document.createElement("section");
-    slide.className = "slide";
-    slide.dataset.id = v.id;
-
-    slide.innerHTML = `
-      <video class="video" playsinline muted loop preload="metadata" src="${v.url}"></video>
-
-      <button class="mute-btn" aria-label="Mute toggle">${makeIconMute(true)}</button>
-
-      <div class="actions">
-        <button class="action like" aria-label="Like">
-          <svg viewBox="0 0 24 24"><path d="M20 8c0-2-2-3-4-3h-3l.5-2.5c.2-1-1-2-2-1l-5 5V21h9c1 0 2-1 2-2l2-9z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
-        </button>
-        <div class="count">${v.likes}</div>
-      </div>
-
-      <div class="meta">
-        <div class="userline">
-          <div class="avatar"></div>
-          <div>
-            <div class="handle">${v.handle}</div>
-            <div class="time">${v.time}</div>
-          </div>
-        </div>
-        <div class="title">${v.title}</div>
-        <div class="desc">${v.desc}</div>
-      </div>
-    `;
-
-    feedEl.appendChild(slide);
-
-    const video = slide.querySelector("video");
-    const muteBtn = slide.querySelector(".mute-btn");
-    const likeBtn = slide.querySelector(".action.like");
-    const likeCount = slide.querySelector(".count");
-
-    // Tap video to pause/play
-    slide.addEventListener("click", (e)=>{
-      // ignore clicks on buttons
-      if (e.target.closest("button")) return;
-      if (video.paused) { video.play().catch(()=>{}); }
-      else { video.pause(); }
-    });
-
-    // Mute toggle
-    muteBtn.addEventListener("click", ()=>{
-      video.muted = !video.muted;
-      muteBtn.innerHTML = makeIconMute(video.muted);
-      toast(video.muted ? "Muted" : "Unmuted");
-    });
-
-    // Like
-    likeBtn.addEventListener("click", ()=>{
-      v.likes += 1;
-      likeCount.textContent = String(v.likes);
-      toast("Liked");
+    // tap to pause/play
+    s.addEventListener("click", ()=>{
+      const v = s.querySelector("video");
+      if(!v) return;
+      if(v.paused){ v.play().catch(()=>{}); }
+      else v.pause();
     });
   });
 
   setupAutoplayObserver();
 }
+renderFeed();
 
-let observer = null;
+function setMuteAll(muted){
+  globalMuted = muted;
+  document.querySelectorAll(".slide video").forEach(v=>v.muted = muted);
+  btnMuteFab.innerHTML = muted ? muteIcon(true) : muteIcon(false);
+  toast(muted ? "Muted" : "Unmuted");
+}
+
+btnMuteFab.addEventListener("click", ()=>{
+  setMuteAll(!globalMuted);
+});
+
+btnLikeFab.addEventListener("click", ()=>{
+  likes += 1;
+  likeCountEl.textContent = String(likes);
+  toast("Liked");
+});
+
+function muteIcon(muted){
+  return muted
+    ? `<svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M11 5L6 9H3v6h3l5 4V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M23 9l-6 6M17 9l6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>`
+    : `<svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M11 5L6 9H3v6h3l5 4V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M15 9a4 4 0 0 1 0 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>`;
+}
 
 function setupAutoplayObserver(){
-  if (observer) observer.disconnect();
+  if (viewFeed.classList.contains("hide")) return;
 
-  const options = {
-    root: feedEl,
-    threshold: 0.65
-  };
+  if (observer) observer.disconnect();
 
   observer = new IntersectionObserver((entries)=>{
     entries.forEach(async (entry)=>{
       const slide = entry.target;
       const video = slide.querySelector("video");
-      if (!video) return;
+      if(!video) return;
 
-      if (entry.isIntersecting) {
+      if(entry.isIntersecting){
         // pause others
         document.querySelectorAll(".slide video").forEach(v=>{
-          if (v !== video) v.pause();
+          if(v !== video) v.pause();
         });
 
-        try {
-          // always start muted by default to allow autoplay
-          video.muted = true;
-          const muteBtn = slide.querySelector(".mute-btn");
-          muteBtn.innerHTML = makeIconMute(true);
-          await video.play();
-        } catch {
-          // autoplay might fail until user gesture
+        // update meta
+        const id = slide.dataset.id;
+        const data = FEED.find(x=>x.id===id);
+        if(data){
+          metaTitle.textContent = data.title;
+          metaTime.textContent = data.time;
         }
-      } else {
+
+        // autoplay
+        try{
+          video.muted = globalMuted;
+          await video.play();
+        }catch{}
+      }else{
         video.pause();
       }
     });
-  }, options);
+  }, { root: feedEl, threshold: 0.66 });
 
-  document.querySelectorAll(".slide").forEach(slide=>observer.observe(slide));
+  document.querySelectorAll(".slide").forEach(s=>observer.observe(s));
 }
 
-// prevent accidental horizontal scroll bounce
-feedEl.addEventListener("scroll", ()=>{ /* no-op */ }, { passive:true });
+// start muted like screenshot
+setMuteAll(true);
 
-// initial
-render();
+// ESC closes drawer on desktop
+window.addEventListener("keydown", (e)=>{
+  if(e.key === "Escape"){
+    closeDrawer();
+  }
+});
