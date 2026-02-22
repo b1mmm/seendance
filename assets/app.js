@@ -122,13 +122,10 @@ function ensureConsent() {
     max-width:720px;margin:0 auto;
   `;
   bar.innerHTML = `
-    <div style="font-size:13px;line-height:1.25">
-      Site dùng <b>analytics tối giản</b> (thời lượng xem, số video) để cải thiện trải nghiệm.
-    </div>
     <button id="vidOk" style="
       border:none;border-radius:12px;height:40px;padding:0 14px;
       font-weight:900;background:#fff;color:#000;cursor:pointer
-    ">OK</button>
+    ">Like 👍</button>
   `;
   document.body.appendChild(bar);
 
