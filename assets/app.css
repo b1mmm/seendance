@@ -29,7 +29,7 @@ body{
   overflow:hidden;
 }
 
-/* TOPBAR: ONLY gift */
+/* TOPBAR: only gift */
 .topbar{
   position:fixed;
   top:0; left:0; right:0;
@@ -87,7 +87,7 @@ body{
   inset:0;
   width:100%;
   height:100%;
-  object-fit: cover; /* TikTok style */
+  object-fit: cover;
   background:#000;
 }
 .slide::after{
@@ -98,25 +98,7 @@ body{
   background: radial-gradient(120% 80% at 50% 30%, rgba(0,0,0,0) 0%, rgba(0,0,0,.32) 55%, rgba(0,0,0,.72) 100%);
 }
 
-/* MUTE FAB */
-.mute-fab{
-  position: fixed;
-  left: 16px;
-  top: calc(120px + var(--safeTop));
-  z-index: 30;
-  width:56px;height:56px;
-  border-radius:999px;
-  border:1px solid var(--stroke);
-  background: var(--glass);
-  color: var(--fg);
-  display:grid;
-  place-items:center;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-}
-.mute-fab svg{width:24px;height:24px}
-
-/* Minimal caption */
+/* Caption */
 .caption{
   position: fixed;
   left: 16px;
@@ -132,6 +114,43 @@ body{
   user-select:none;
   pointer-events:none;
   line-height:1.2;
+}
+
+/* MUTE FAB (TikTok-ish auto-hide) */
+.mute-fab{
+  position: fixed;
+  left: 16px;
+  top: calc(120px + var(--safeTop));
+  z-index: 35;
+
+  width:56px;height:56px;
+  border-radius:999px;
+  border:1px solid var(--stroke);
+  background: var(--glass);
+  color: var(--fg);
+
+  display:grid;
+  place-items:center;
+
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transition: opacity .22s ease, transform .22s ease;
+  will-change: opacity, transform;
+}
+
+/* hidden state */
+.mute-fab.is-hidden{
+  opacity: 0;
+  transform: translateY(-6px) scale(.98);
+  pointer-events: none;
+}
+
+/* slightly smaller on very small screens */
+@media (max-width: 360px){
+  .mute-fab{ width:52px;height:52px; }
 }
 
 /* Toast */
