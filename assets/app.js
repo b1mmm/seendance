@@ -121,11 +121,15 @@ function ensureConsent() {
     display:flex;gap:10px;align-items:center;justify-content:space-between;
     max-width:720px;margin:0 auto;
   `;
+
   bar.innerHTML = `
     <button id="vidOk" style="
-      border:none;border-radius:12px;height:40px;padding:0 14px;
-      font-weight:900;background:#fff;color:#000;cursor:pointer
-    ">Like 👍</button>
+      display:flex;align-items:center;gap:6px;
+      height:42px;padding:0 16px;line-height:1;
+      border:2px solid #fff;border-radius:999px;
+      font-weight:900;font-size:14px;
+      background:#fff;color:#000;cursor:pointer;
+    "><span>Like</span><span style="font-size:16px">👍</span></button>
   `;
   document.body.appendChild(bar);
 
