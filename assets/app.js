@@ -7,7 +7,6 @@
  * - Gift icon redirects to google.com
  */
 
-const SND_BASE = "https://guerin.acequia.io/ai/";
 const RAW_LIST = [
   "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example1.mp4",
   "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example2.mp4",
@@ -41,14 +40,6 @@ const TITLE_BANK = [
   "Cảnh này mà dựng quảng cáo thì auto win!"
 ];
 
-function normalizeToUrl(item) {
-  const s = item.trim();
-  if (s.startsWith("[SND]")) {
-    const filename = s.replace("[SND]", "").trim();
-    return `${SND_BASE}${encodeURIComponent(filename)}`;
-  }
-  return s;
-}
 
 function shuffleInPlace(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
