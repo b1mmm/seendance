@@ -107,23 +107,24 @@ function ensureConsent() {
   const bar = document.createElement("div");
   bar.style.cssText = `
     position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;
-    padding:12px 12px;border-radius:14px;
+    padding:10px;border-radius:14px;
     border:1px solid rgba(255,255,255,.12);
     background:rgba(0,0,0,.7);backdrop-filter:blur(10px);
-    color:rgba(255,255,255,.92);font-weight:800;
-    display:flex;gap:10px;align-items:center;justify-content:space-between;
-    max-width:720px;margin:0 auto;
+    max-width:520px;margin:0 auto;
+    display:flex;align-items:center;justify-content:center;
   `;
-
-  // ✅ Optimized Like button (fit title + icon)
+  
   bar.innerHTML = `
     <button id="vidOk" style="
-      display:flex;align-items:center;gap:6px;
-      height:42px;padding:0 16px;line-height:1;
+      display:inline-flex;align-items:center;justify-content:center;gap:6px;
+      height:40px;padding:0 14px;line-height:1;
       border:2px solid #000;border-radius:999px;
       font-weight:900;font-size:14px;
       background:#fff;color:#000;cursor:pointer;
-    "><span>Like</span><span style="font-size:16px">👍</span></button>
+      box-sizing:border-box;
+    ">
+      <span>Like</span><span style="font-size:16px;line-height:1">👍</span>
+    </button>
   `;
 
   document.body.appendChild(bar);
