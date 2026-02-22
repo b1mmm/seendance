@@ -16,25 +16,18 @@ const SESSION_ENDPOINT = `${WORKER_BASE}/api/session`;
 
 const SND_BASE = "https://guerin.acequia.io/ai/";
 const RAW_LIST = [
-  "[SND]BethGulfofMexico.mp4",
-  "[SND]Breecker-crane-over-head-with-LOTR-Nazgul.mp4",
-  "[SND]breecker-dolly-left-swipe-in-person.mp4",
-  "[SND]ed-angel-gorilla-2.mp4",
-  "[SND]ed-angel-gorilla.mp4",
-  "[SND]errand-missed-catch.mp4",
-  "[SND]Graydon_RxBurn.mp4",
-  "[SND]nyc-lateshow-icecream.mp4",
-  "https://guerin.acequia.io/ai/owen-dolly-in-smile.mp4",
-  "https://guerin.acequia.io/ai/owen-dolly-right-smile.mp4",
-  "https://guerin.acequia.io/ai/plume-bulletcam-partial-fail.mp4",
-  "https://guerin.acequia.io/ai/plume-dolly-left.mp4",
-  "https://guerin.acequia.io/ai/plume-orbit.mp4",
-  "https://guerin.acequia.io/ai/plume-rotate-right.mp4",
-  "https://guerin.acequia.io/ai/red-river-thumbs-up.mp4",
-  "https://guerin.acequia.io/ai/red-river-thumbs-up2.mp4",
-  "https://guerin.acequia.io/ai/ron-jill-dolly-out.mp4",
-  "https://guerin.acequia.io/ai/ron-jill-toast.mp4",
-  "https://guerin.acequia.io/ai/Stu-Stephen-museumHill-ai.mp4"
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example1.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example2.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example3.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example4.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example5.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example6.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example7.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example8.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example9.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example10.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example11.mp4",
+  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example12.mp4"
 ];
 
 const TITLE_BANK = [
