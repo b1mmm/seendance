@@ -1,47 +1,21 @@
 /**
- * Minimal random video feed (GitHub Pages) — FULL app.js
- * Requirements:
- * - NO like button, NO user info, NO time, NO filename shown (except consent button "Like")
- * - Random shuffle videos on each visit
- * - Random TikTok-style hook title from BANK per video
- * - Autoplay muted; tap to pause/play; mute toggle
- * - Gift icon redirects to google.com
- * - Collect minimal session analytics (non-identifying) and send to Worker on session end
- *   Endpoint: POST https://seedance.testmail12071997.workers.dev/api/session
- *   Uses sendBeacon/keepalive
- *
- * Extra (Fix nhanh để “vào là có log”):
- * - When user clicks Like (consent), send a quick event "consent_ok" immediately (keepalive)
+ * Seedance — FULL app.js (Tap Hint UI)
+ * - Tap while playing => show controls briefly then auto-hide
+ * - Toggle mute => hide controls immediately
+ * - Pause => show controls (fade in) and keep visible
+ * - Consent Like => send quick event immediately ("consent_ok")
+ * - Send session analytics on end
  */
 
 const WORKER_BASE = "https://seedance.testmail12071997.workers.dev";
 const SESSION_ENDPOINT = `${WORKER_BASE}/api/session`;
-/**
-const RAW_LIST = [
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example1.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example2.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example3.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example4.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example5.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example6.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example7.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example8.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example9.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example10.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example11.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example12.mp4"
-];
- */
+
+/* KEEP YOUR VIDEO URLS */
 const RAW_LIST = [
   "https://video.xx.fbcdn.net/o1/v/t2/f2/m366/AQP4VXBLefooERws2IkstBzmuqrHwYCopBxiB8yHWGcgEqtrXPGlFVUapjryE-JyWrZapOo4EJaKgo_CFO8-TGsvqa9fi6xYx6zGDQnJOAIsig.mp4?_nc_cat=109&_nc_oc=AdmJXB2YmkrFENjjnrVgJvJRtxUr4mLlW8Li_Xi_h0vCilnAGxVCqooQAToqxvFHQek&_nc_sid=5e9851&_nc_ht=video.fsgn8-3.fna.fbcdn.net&_nc_ohc=tj9go5At0XIQ7kNvwErX-He&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMTI4MC5kYXNoX2gyNjQtYmFzaWMtZ2VuMl83MjBwIiwieHB2X2Fzc2V0X2lkIjoxNzAyODYzOTg0NDIxMDQ3LCJhc3NldF9hZ2VfZGF5cyI6MSwidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjExLCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=c7ea1428073d0db0&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9EQzREMTAyQTU3QzczMjE5NzM4NzdBNDM3MTc2OEE5M19tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzU3NDA3MTY2QTlBRjU5RTlBNDJGRUMwNjI3QTMwRjg2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbuoqOu3a-GBhUCKAJDMywXQCZEGJN0vGoYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUCZZKeAQA&_nc_gid=9Q1fz-3LuAoGAVo9tCHWlQ&_nc_zt=28&oh=00_AfvHqGQ1R5_93K-5s125UKfAsMk2OQFHV8NLyCntUj8R7Q&oe=69A0A46B&bitrate=2108467&tag=dash_h264-basic-gen2_720p",
   "https://video.xx.fbcdn.net/o1/v/t2/f2/m366/AQMkeiJlHwd8k1VsOeIbnOTUTyRfoACRmVD67MDYR_8iP5dKEVgwySLk8tqYv6pczJDcc8OtnoqTYJCih5Y6KcXqloYFJtN2z9JsDbhae4FSnQ.mp4?_nc_cat=100&_nc_oc=Adl78cv0vRyl92GYiJGhwTzZbDa6h_9DpFaHIXp2nSDT_AWJol5V7HujTYqf_ZbLNvA&_nc_sid=5e9851&_nc_ht=video.fdad3-4.fna.fbcdn.net&_nc_ohc=d_mngr4wRM4Q7kNvwGPPDF3&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjIzMjYxMzUzMjEyMzcxNTQsImFzc2V0X2FnZV9kYXlzIjo1MSwidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjE0LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=b744adceb6e63a45&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC83NzQ5NEJFRDBEM0I5NkE2MkUzMjdDOUMzMDkxN0ZCMl9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50LzVGNENGMDRGQzc2NUZGQTgzMDI0OEM1RjQ2OEE4Rjk4X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACbE2qzY8uahCBUCKAJDMywXQCzMzMzMzM0YGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUCZZKeAQA&_nc_gid=ysh9pOQmkRaOhFxVAV7VgQ&_nc_zt=28&oh=00_Aftv-cVgxZquFxeeR1K4cY3kcQWvPrH2hidpqRm2df3UXg&oe=69A09F44&bitrate=1631808&tag=dash_h264-basic-gen2_720p",
   "https://video.xx.fbcdn.net/o1/v/t2/f2/m412/AQOgUtBVUnauvy2Wm7VFbikIEHrcwLbAsUoSqirH-gVDhuuVGz4ui1s_bhYYCiUrUs7zkZdQkGKbO39EEC2Sc4n3-qvQxPyk4Pz3DxT7CA.mp4?_nc_cat=105&_nc_oc=AdlS_IjSnTRN1BCl2q_9joTXdaA9eweiwApKZof9pvO4MsHJopKqvr3lpH5HM3ITPDI&_nc_sid=8bf8fe&_nc_ht=video.fsgn5-6.fna.fbcdn.net&_nc_ohc=kXp0WLy50ikQ7kNvwGKQ8kg&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTM3MTY5MTY1NDUxMDg3MCwiYXNzZXRfYWdlX2RheXMiOjg4LCJ2aV91c2VjYXNlX2lkIjoxMDEyMSwiZHVyYXRpb25fcyI6MTIsInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&_nc_gid=Ko1B7PK-fVigC2soXZEP3A&_nc_zt=28&oh=00_AfvDgZgLJyGnZZvDEezCWW7ltFHfT17XymoqY3-qIG_73w&oe=69A0BF89&bitrate=193847&tag=sve_sd",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m366/AQMj-gs4XDoV-Vi1P7HULEIF2LDV9C8owAZboDVd_0mlMWdfT35qhsWefK4zJ8Qj_muK_niS6yxu5JzZIAvGYOQQA9B_fidini43cNBiLOmFVQ.mp4?_nc_cat=105&_nc_oc=AdnChMV9PFrYTvj2HFpPsUJUwkpzj3__denHVGLX1TV5sS36jy4J2JZupq5C8V8qEjY&_nc_sid=5e9851&_nc_ht=video.fdad3-4.fna.fbcdn.net&_nc_ohc=vOi1EaaG0eoQ7kNvwF32KJF&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjIwNzI5OTk0OTY4NTc5MDEsImFzc2V0X2FnZV9kYXlzIjo5OCwidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjE1LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=31302883bfe96235&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC8zMjQzMUZDMjhCQjhBM0I2RTIyMzUzRkREMjU0ODQ4NF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50L0M2NDk0MzM5NkI4Rjc3NTJCODFFNTlERDY1MzFEM0JFX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACba5InqudiuBxUCKAJDMywXQC4Q5WBBiTcYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUCZZKeAQA&_nc_gid=u4lRUQIjGky6Wx1F73HIMQ&_nc_zt=28&oh=00_Afuv0F9DDFFUaH7IYyjEc-X-oQYELaIBIGA-ZdIreh4G9w&oe=69A0BD63&bitrate=2466789&tag=dash_h264-basic-gen2_720p",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m412/AQP7PXHiwsLn1l0gtzrEGc9GmVfNbN8AGcqAAAULWjYXOhH7expAJBuAzzBtAYynuPmRdssqFb5pxAXPRnxAF4GGrtlHOf7i5UP8uvWizw.mp4?_nc_cat=106&_nc_oc=Adn7adqLEMPl51wrh7waiGOoC0heoxDukCALy9wtvHqG1IRoEVzE1PStKOXxy3pUWhU&_nc_sid=8bf8fe&_nc_ht=video.fsgn5-13.fna.fbcdn.net&_nc_ohc=uC6hZ2dK25AQ7kNvwEwV61d&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTg0NTMwMjAzNjA3NjU5MCwiYXNzZXRfYWdlX2RheXMiOjEwOCwidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjksInVybGdlbl9zb3VyY2UiOiJ3d3cifQ%3D%3D&ccb=17-1&_nc_gid=iPRcOFO9epErL124C3SGGw&_nc_zt=28&oh=00_AfvTRtpJq7G6TKbUQrWaIXVPsa3XgtElN6aC7xmS6la22w&oe=69A0AED0&bitrate=513050&tag=sve_sd",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m412/AQOQMRZOv9DZpbm9mLsCS_KuyQnm4CK2TMOASgb_ydsQ-3YfcTyfvohZGiFd_gRtmC1lLlI_vXc0VSjRBkvjJllg1d39bTAm_eY8HjwAyg.mp4?_nc_cat=111&_nc_oc=AdniyBaXx5tl7uS3Pqxa9OUdAYLTws0n36OLdSyseK-iJ6-gZadfz2NK-GN5PxKvI_o&_nc_sid=8bf8fe&_nc_ht=video.fhan5-10.fna.fbcdn.net&_nc_ohc=Oh-d2RZpHo0Q7kNvwHq_sxg&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6MTE0OTc5MzY4Mzc1MDQ5MSwiYXNzZXRfYWdlX2RheXMiOjEzNywidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjEwLCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=u-MgwdHHHW9xXw7uWQmuBg&_nc_zt=28&oh=00_AftXoGXhTFy8ZcNS1L5oO9JKJGo9P-QQ3YyPTcy2xQv6kw&oe=69A0CC03&bitrate=586676&tag=sve_sd",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m366/AQPGETo8R2jISNli34WGl3SjupFoGK6YHz70McSoCu4U9EXG6FCe-3a3tQDGhixWKVLGriHm6GfQooLYvDBClC4RfInjFS34VIP0l3IyYB9-sg.mp4?_nc_cat=107&_nc_oc=AdndMoYVxrwEYp4n8uJbhk1eN03xRa1gxfBa2hKCy3lmtAFybX3TNbt3miukk6QJgx8&_nc_sid=5e9851&_nc_ht=video.fthd1-1.fna.fbcdn.net&_nc_ohc=WQSZ2a4l_IIQ7kNvwGwF9dN&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjI2NjEzMzA5NjA4NzI4NjEsImFzc2V0X2FnZV9kYXlzIjoxNDMsInZpX3VzZWNhc2VfaWQiOjEwMTIxLCJkdXJhdGlvbl9zIjoxNCwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&vs=f5bd9f8e93a227d3&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC9FNTQ1RUFDMjdGMDc1REFFQTg1REIxMjJBQ0QxN0Q4Q19tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50Lzc2NDdEMjJCOUYzRkZBNjc0Mzc5MUIxQTBFNTI4M0E2X2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACa61uvo7J26CRUCKAJDMywXQCyZmZmZmZoYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUCZZKeAQA&_nc_gid=tPEKAPWTBI0oLnogNWN7tg&_nc_zt=28&oh=00_Afs-drrixyOFmXSZYSf_ObqV7Dg26NwNJ9TkdEAGVXCz9g&oe=69A0D0D5&bitrate=2023943&tag=dash_h264-basic-gen2_720p",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m412/AQObGVeYoiq7ho-DX34eP0K9S3ffJymvon4tA8M3KxKDEps86Majqdz07Hm7T8KYu6i7126VojUXwbPaVUtNYu8JpsnL4vLid9prxkVuGw.mp4?_nc_cat=111&_nc_oc=AdnfKA7xx1T63dJyXd7oOPpE4jhwVh8Gt2zUipXn1n7bxvc6BQkOvqMVdnJeW5wHbbo&_nc_sid=8bf8fe&_nc_ht=video.fhan14-3.fna.fbcdn.net&_nc_ohc=_mWD08sV-VsQ7kNvwF61HyQ&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6Mzc1MTI0NDMzODM0NjE0NSwiYXNzZXRfYWdlX2RheXMiOjE1NSwidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjIwLCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&_nc_gid=vqiusHvU54Qr0b65e0nn3A&_nc_zt=28&oh=00_AfuqQ06E7JehG1TNhaamC3W33MzTMNPBllY7h_abvkVFsA&oe=69A0B457&bitrate=531422&tag=sve_sd",
-  "https://video.xx.fbcdn.net/o1/v/t2/f2/m366/AQM4hOgJwh-ACjaBOka90D1fbJ0H9rdPSJGTw_ypJrY8j0rV8tiurRAyFsOCV1gySP0FpFVwfdB3pR92oFJYkCuKcU4y15bmaunh60z_9w.mp4?_nc_cat=110&_nc_oc=AdnMwu2MzPZWC5HfLF1ivDv20dl-HNNq5yj474WvzCo2OlKHXkYPmIv03C7AAsImtUE&_nc_sid=8bf8fe&_nc_ht=video.fhan4-4.fna.fbcdn.net&_nc_ohc=P_jLXDet3gwQ7kNvwGyGGVV&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuMzYwLnN2ZV9zZCIsInhwdl9hc3NldF9pZCI6ODAyMzgyNDE1NTgwMTIzLCJhc3NldF9hZ2VfZGF5cyI6MTU2LCJ2aV91c2VjYXNlX2lkIjoxMDEyMSwiZHVyYXRpb25fcyI6OSwidXJsZ2VuX3NvdXJjZSI6Ind3dyJ9&ccb=17-1&_nc_gid=GNb2tRUTtvN7YJgklmJXow&_nc_zt=28&oh=00_Afv3806p0nBW9MnZoIQlfyxUgJrPAkLxswbYAMQ8CC0bJw&oe=69A0D3E4&bitrate=358288&tag=sve_sd"
+  "https://video.xx.fbcdn.net/o1/v/t2/f2/m366/AQMj-gs4XDoV-Vi1P7HULEIF2LDV9C8owAZboDVd_0mlMWdfT35qhsWefK4zJ8Qj_muK_niS6yxu5JzZIAvGYOQQA9B_fidini43cNBiLOmFVQ.mp4?_nc_cat=105&_nc_oc=AdnChMV9PFrYTvj2HFpPsUJUwkpzj3__denHVGLX1TV5sS36jy4J2JZupq5C8V8qEjY&_nc_sid=5e9851&_nc_ht=video.fdad3-4.fna.fbcdn.net&_nc_ohc=vOi1EaaG0eoQ7kNvwF32KJF&efg=eyJ2ZW5jb2RlX3RhZyI6Inhwdl9wcm9ncmVzc2l2ZS5GQUNFQk9PSy4uQzMuNzIwLmRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHAiLCJ4cHZfYXNzZXRfaWQiOjIwNzI5OTk0OTY4NTc5MDEsImFzc2V0X2FnZV9kYXlzIjo5OCwidmlfdXNlY2FzZV9pZCI6MTAxMjEsImR1cmF0aW9uX3MiOjE1LCJ1cmxnZW5fc291cmNlIjoid3d3In0%3D&ccb=17-1&vs=31302883bfe96235&_nc_vs=HBksFQIYRWZiX2VwaGVtZXJhbC8zMjQzMUZDMjhCQjhBM0I2RTIyMzUzRkREMjU0ODQ4NF9tdF8xX3ZpZGVvX2Rhc2hpbml0Lm1wNBUAAsgBEgAVAhhAZmJfcGVybWFuZW50L0M2NDk0MzM5NkI4Rjc3NTJCODFFNTlERDY1MzFEM0JFX2F1ZGlvX2Rhc2hpbml0Lm1wNBUCAsgBEgAoABgAGwKIB3VzZV9vaWwBMRJwcm9ncmVzc2l2ZV9yZWNpcGUBMRUAACba5InqudiuBxUCKAJDMywXQC4Q5WBBiTcYGWRhc2hfaDI2NC1iYXNpYy1nZW4yXzcyMHARAHUCZZKeAQA&_nc_gid=u4lRUQIjGky6Wx1F73HIMQ&_nc_zt=28&oh=00_Afuv0F9DDFFUaH7IYyjEc-X-oQYELaIBIGA-ZdIreh4G9w&oe=69A0BD63&bitrate=2466789&tag=dash_h264-basic-gen2_720p"
 ];
 
 const TITLE_BANK = [
@@ -63,10 +37,7 @@ const TITLE_BANK = [
 ];
 
 // ---------- helpers ----------
-function normalizeToUrl(item) {
-  return (item || "").toString().trim();
-}
-
+function normalizeToUrl(item) { return (item || "").toString().trim(); }
 function shuffleInPlace(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1));
@@ -74,11 +45,7 @@ function shuffleInPlace(arr) {
   }
   return arr;
 }
-
-function pickRandom(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
+function pickRandom(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
 function now() { return Date.now(); }
 
 function muteIcon(muted) {
@@ -101,11 +68,7 @@ const btnMute = document.getElementById("btnMute");
 const btnGift = document.getElementById("btnGift");
 
 // Gift redirect
-if (btnGift) {
-  btnGift.addEventListener("click", () => {
-    window.location.href = "https://google.com";
-  });
-}
+if (btnGift) btnGift.addEventListener("click", () => (window.location.href = "https://google.com"));
 
 function toast(msg) {
   if (!toastEl) return;
@@ -114,7 +77,7 @@ function toast(msg) {
   setTimeout(() => toastEl.classList.remove("show"), 900);
 }
 
-// ---------- Session analytics (minimal) ----------
+// ---------- Session analytics ----------
 function getUID() {
   const key = "vid_uid";
   let v = localStorage.getItem(key);
@@ -124,7 +87,6 @@ function getUID() {
   }
   return v;
 }
-
 function getOrCreateSessionId() {
   const key = "vid_session_id";
   let sid = sessionStorage.getItem(key);
@@ -134,7 +96,6 @@ function getOrCreateSessionId() {
   }
   return sid;
 }
-
 const UID = getUID();
 const SESSION_ID = getOrCreateSessionId();
 
@@ -147,7 +108,7 @@ const session = {
   videosSeen: 0,
   videoIdsSeen: [],
   activeVideoId: null,
-  watchMsByVideo: {},  // {id: ms}
+  watchMsByVideo: {},
   lastTickAt: now(),
   muted: true,
   ref: document.referrer || "",
@@ -179,7 +140,7 @@ function tickWatchTime() {
 }
 setInterval(tickWatchTime, 1000);
 
-// ---------- Quick log helper (send immediately on consent) ----------
+// ---------- Quick log (immediate) ----------
 function sendQuickEvent(eventName) {
   const payload = {
     sid: SESSION_ID,
@@ -194,25 +155,21 @@ function sendQuickEvent(eventName) {
     ua: (navigator.userAgent || "").slice(0, 220),
   };
 
-  const body = JSON.stringify(payload);
-
-  // Prefer keepalive fetch for immediate event
   try {
     fetch(SESSION_ENDPOINT, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body,
+      body: JSON.stringify(payload),
       keepalive: true
     }).catch(() => {});
   } catch {}
 }
 
-// ---------- Consent (minimal, 1-time) ----------
+// ---------- Consent Like (mini, centered) ----------
 function ensureConsent() {
   const key = "vid_analytics_ok";
   if (localStorage.getItem(key) === "1") return true;
 
-  // ✅ mini bar that hugs the Like button
   const bar = document.createElement("div");
   bar.style.cssText = `
     position:fixed;
@@ -228,20 +185,15 @@ function ensureConsent() {
       align-items:center;
       justify-content:center;
       gap:6px;
-
       height:40px;
       padding:0 14px;
-
       border:2px solid #000;
       border-radius:999px;
-
       font-weight:900;
       font-size:14px;
-
       background:#fff;
       color:#000;
       cursor:pointer;
-
       box-sizing:border-box;
     ">
       <span>Like</span>
@@ -253,8 +205,7 @@ function ensureConsent() {
 
   bar.querySelector("#vidOk").addEventListener("click", () => {
     localStorage.setItem(key, "1");
-    // ✅ Fix nhanh: bấm Like là có log ngay
-    sendQuickEvent("consent_ok");
+    sendQuickEvent("consent_ok"); // ✅ vào là có log
     bar.remove();
   });
 
@@ -262,7 +213,7 @@ function ensureConsent() {
 }
 ensureConsent();
 
-// ---------- Feed build (random each visit) ----------
+// ---------- Build feed ----------
 const URLS = RAW_LIST.map(normalizeToUrl);
 shuffleInPlace(URLS);
 
@@ -272,9 +223,44 @@ const FEED = URLS.map((url, idx) => ({
   title: pickRandom(TITLE_BANK),
 }));
 
-// ---------- Render feed ----------
+// ---------- Tap Hint UI: controls show/hide ----------
 let observer = null;
 let globalMuted = true;
+let lastTapAt = 0;
+let hintTimer = null;
+
+function showControls() {
+  if (btnMute) btnMute.classList.remove("is-hidden");
+  if (btnGift) btnGift.classList.remove("is-hidden");
+  if (captionEl) captionEl.classList.remove("is-hidden");
+}
+
+function hideControls() {
+  if (btnMute) btnMute.classList.add("is-hidden");
+  if (btnGift) btnGift.classList.add("is-hidden");
+  if (captionEl) captionEl.classList.add("is-hidden");
+}
+
+function showControlsBrief(ms = 1600) {
+  showControls();
+  if (hintTimer) clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => {
+    // Only auto-hide if currently playing
+    const v = getActiveVideo();
+    if (v && !v.paused) hideControls();
+  }, ms);
+}
+
+function getActiveSlide() {
+  const id = session.activeVideoId;
+  if (!id) return null;
+  return document.querySelector(`.slide[data-id="${CSS.escape(id)}"]`);
+}
+
+function getActiveVideo() {
+  const slide = getActiveSlide();
+  return slide ? slide.querySelector("video") : null;
+}
 
 function setMuteAll(muted) {
   globalMuted = muted;
@@ -285,7 +271,29 @@ function setMuteAll(muted) {
 }
 
 if (btnMute) {
-  btnMute.addEventListener("click", () => setMuteAll(!globalMuted));
+  btnMute.addEventListener("click", (e) => {
+    e.stopPropagation();
+    setMuteAll(!globalMuted);
+    hideControls(); // ✅ bấm mute/unmute ẩn ngay
+  });
+}
+
+// Gift click shouldn’t pause video
+if (btnGift) {
+  btnGift.addEventListener("click", (e) => e.stopPropagation());
+}
+
+// ---------- Render ----------
+function attachVideoSignals(video) {
+  video.addEventListener("pause", () => {
+    // pause => show controls and keep visible
+    showControls();
+  });
+
+  video.addEventListener("play", () => {
+    // playing => keep UI quiet (hidden), but allow tap-hint
+    hideControls();
+  });
 }
 
 function render() {
@@ -299,12 +307,34 @@ function render() {
     s.dataset.title = item.title;
 
     s.innerHTML = `<video playsinline muted loop preload="metadata" src="${item.url}"></video>`;
+    const v = s.querySelector("video");
+    if (v) attachVideoSignals(v);
 
+    // Tap slide:
+    // - If paused -> play
+    // - If playing -> (1st tap) show hint, (2nd tap quickly) pause
     s.addEventListener("click", () => {
-      const v = s.querySelector("video");
-      if (!v) return;
-      if (v.paused) v.play().catch(() => {});
-      else v.pause();
+      const video = s.querySelector("video");
+      if (!video) return;
+
+      if (video.paused) {
+        video.play().catch(() => {});
+        hideControls();
+        return;
+      }
+
+      const t = now();
+      const dt = t - lastTapAt;
+      lastTapAt = t;
+
+      if (dt < 320) {
+        // double-tap (fast) => pause
+        video.pause();
+        // pause handler will show controls
+      } else {
+        // single tap while playing => show hint briefly
+        showControlsBrief(1600);
+      }
     });
 
     feedEl.appendChild(s);
@@ -330,10 +360,12 @@ function setupObserver() {
       if (!video) return;
 
       if (entry.isIntersecting) {
+        // pause others
         document.querySelectorAll(".slide video").forEach(v => {
           if (v !== video) v.pause();
         });
 
+        // update active + seen + caption
         const id = slide.dataset.id || null;
         if (id && id !== session.activeVideoId) {
           session.activeVideoId = id;
@@ -341,10 +373,15 @@ function setupObserver() {
         }
         if (captionEl) captionEl.textContent = slide.dataset.title || "";
 
+        // autoplay
         try {
           video.muted = globalMuted;
           await video.play();
-        } catch {}
+          hideControls(); // quiet
+        } catch {
+          // if autoplay blocked, keep controls visible to hint user
+          showControls();
+        }
       } else {
         video.pause();
       }
@@ -391,8 +428,7 @@ function sendSession() {
 
   if (localStorage.getItem("vid_analytics_ok") !== "1") return;
 
-  const payload = buildSessionPayload();
-  const body = JSON.stringify(payload);
+  const body = JSON.stringify(buildSessionPayload());
 
   if (navigator.sendBeacon) {
     const blob = new Blob([body], { type: "application/json" });
@@ -408,7 +444,6 @@ function sendSession() {
   }).catch(() => {});
 }
 
-// end-of-session signals
 window.addEventListener("pagehide", sendSession);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") sendSession();
@@ -417,6 +452,4 @@ document.addEventListener("visibilitychange", () => {
 // ---------- Init ----------
 render();
 setMuteAll(true);
-
-// If you want ZERO text overlay (ultra minimal), uncomment:
-// if (captionEl) captionEl.style.display = "none";
+hideControls(); // start quiet
