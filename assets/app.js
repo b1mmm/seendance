@@ -1,25 +1,40 @@
 /**
- * Minimal random feed:
- * - Shuffle videos every page load (avoid boredom)
- * - Use random Vietnamese TikTok-style titles from BANK (no filename shown)
- * - Autoplay muted (best for mobile)
- * - Tap video to pause/play
+ * Minimal random video feed (GitHub Pages) — FULL app.js
+ * Requirements:
+ * - NO like button, NO user info (@motionmint), NO time, NO filename shown
+ * - Random shuffle videos on each visit (avoid boredom)
+ * - Random TikTok-style hook title from BANK per video
+ * - Autoplay muted; tap to pause/play; mute toggle
  * - Gift icon redirects to google.com
+ * - Collect minimal session analytics (non-identifying) and send to Worker on session end
+ *   Endpoint: POST https://seedance.testmail12071997.workers.dev/api/session
+ *   Uses sendBeacon/keepalive
  */
 
+const WORKER_BASE = "https://seedance.testmail12071997.workers.dev";
+const SESSION_ENDPOINT = `${WORKER_BASE}/api/session`;
+
+const SND_BASE = "https://guerin.acequia.io/ai/";
 const RAW_LIST = [
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example1.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example2.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example3.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example4.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example5.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example6.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example7.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example8.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example9.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example10.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example11.mp4",
-  "https://pub-a077dfd3895545a2b5ad4bf2809307e1.r2.dev/seedance/example12.mp4",  
+  "[SND]BethGulfofMexico.mp4",
+  "[SND]Breecker-crane-over-head-with-LOTR-Nazgul.mp4",
+  "[SND]breecker-dolly-left-swipe-in-person.mp4",
+  "[SND]ed-angel-gorilla-2.mp4",
+  "[SND]ed-angel-gorilla.mp4",
+  "[SND]errand-missed-catch.mp4",
+  "[SND]Graydon_RxBurn.mp4",
+  "[SND]nyc-lateshow-icecream.mp4",
+  "https://guerin.acequia.io/ai/owen-dolly-in-smile.mp4",
+  "https://guerin.acequia.io/ai/owen-dolly-right-smile.mp4",
+  "https://guerin.acequia.io/ai/plume-bulletcam-partial-fail.mp4",
+  "https://guerin.acequia.io/ai/plume-dolly-left.mp4",
+  "https://guerin.acequia.io/ai/plume-orbit.mp4",
+  "https://guerin.acequia.io/ai/plume-rotate-right.mp4",
+  "https://guerin.acequia.io/ai/red-river-thumbs-up.mp4",
+  "https://guerin.acequia.io/ai/red-river-thumbs-up2.mp4",
+  "https://guerin.acequia.io/ai/ron-jill-dolly-out.mp4",
+  "https://guerin.acequia.io/ai/ron-jill-toast.mp4",
+  "https://guerin.acequia.io/ai/Stu-Stephen-museumHill-ai.mp4"
 ];
 
 const TITLE_BANK = [
@@ -37,9 +52,18 @@ const TITLE_BANK = [
   "Cảnh ‘ảo’ nhất hôm nay đây!",
   "Chốt đơn vibe này ngay!",
   "Tự nhiên nổi da gà…",
-  "Cảnh này mà dựng quảng cáo thì auto win!"
+  "Cảnh này dựng quảng cáo là auto win!"
 ];
 
+// ---------- helpers ----------
+function normalizeToUrl(item) {
+  const s = (item || "").toString().trim();
+  if (s.startsWith("[SND]")) {
+    const filename = s.replace("[SND]", "").trim();
+    return `${SND_BASE}${encodeURIComponent(filename)}`;
+  }
+  return s;
+}
 
 function shuffleInPlace(arr) {
   for (let i = arr.length - 1; i > 0; i--) {
@@ -53,7 +77,9 @@ function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function muteIcon(muted){
+function now() { return Date.now(); }
+
+function muteIcon(muted) {
   return muted
     ? `<svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M11 5L6 9H3v6h3l5 4V5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
@@ -65,139 +91,33 @@ function muteIcon(muted){
       </svg>`;
 }
 
+// ---------- DOM ----------
 const feedEl = document.getElementById("feed");
 const captionEl = document.getElementById("caption");
 const toastEl = document.getElementById("toast");
 const btnMute = document.getElementById("btnMute");
 const btnGift = document.getElementById("btnGift");
 
-btnGift.addEventListener("click", ()=> {
-  window.location.href = "https://google.com";
-});
+// Gift redirect
+if (btnGift) {
+  btnGift.addEventListener("click", () => {
+    window.location.href = "https://google.com";
+  });
+}
 
-function toast(msg){
+function toast(msg) {
+  if (!toastEl) return;
   toastEl.textContent = msg;
   toastEl.classList.add("show");
-  setTimeout(()=>toastEl.classList.remove("show"), 900);
+  setTimeout(() => toastEl.classList.remove("show"), 900);
 }
 
-let globalMuted = true;
-let observer = null;
-
-// Build shuffled feed each visit
-const URLS = RAW_LIST.map(normalizeToUrl);
-shuffleInPlace(URLS);
-
-// Assign a random title per slide (no filenames)
-const FEED = URLS.map((url, idx) => ({
-  id: `v${idx+1}`,
-  url,
-  title: pickRandom(TITLE_BANK)
-}));
-
-function setMuteAll(muted){
-  globalMuted = muted;
-  document.querySelectorAll(".slide video").forEach(v => v.muted = muted);
-  btnMute.innerHTML = muteIcon(muted);
-  toast(muted ? "Muted" : "Unmuted");
-}
-
-btnMute.addEventListener("click", ()=> setMuteAll(!globalMuted));
-
-function render(){
-  feedEl.innerHTML = "";
-
-  FEED.forEach(item => {
-    const s = document.createElement("section");
-    s.className = "slide";
-    s.dataset.id = item.id;
-    s.dataset.title = item.title;
-    s.innerHTML = `<video playsinline muted loop preload="metadata" src="${item.url}"></video>`;
-    feedEl.appendChild(s);
-
-    // Tap to pause/play
-    s.addEventListener("click", ()=>{
-      const v = s.querySelector("video");
-      if(!v) return;
-      if(v.paused) v.play().catch(()=>{});
-      else v.pause();
-    });
-  });
-
-  setupObserver();
-}
-
-function setupObserver(){
-  if (observer) observer.disconnect();
-
-  observer = new IntersectionObserver((entries)=>{
-    entries.forEach(async (entry)=>{
-      const slide = entry.target;
-      const video = slide.querySelector("video");
-      if(!video) return;
-
-      if(entry.isIntersecting){
-        // Pause others
-        document.querySelectorAll(".slide video").forEach(v=>{
-          if(v !== video) v.pause();
-        });
-
-        // Update caption with random title (already assigned)
-        captionEl.textContent = slide.dataset.title || "";
-
-        // Autoplay
-        try{
-          video.muted = globalMuted;
-          await video.play();
-        }catch{}
-      }else{
-        video.pause();
-      }
-    });
-  }, { root: feedEl, threshold: 0.66 });
-
-  document.querySelectorAll(".slide").forEach(s => observer.observe(s));
-}
-
-// Init
-render();
-setMuteAll(true);
-// ===== Session analytics (minimal, consent-friendly) =====
-const WORKER_BASE = "https://seedance.testmail12071997.workers.dev";
-const SESSION_ENDPOINT = `${WORKER_BASE}/api/session`;
-
-function getUID() {
-  const key = "vid_uid";
-  let v = localStorage.getItem(key);
-  if (!v) {
-    v = (crypto?.randomUUID?.() || `u_${Math.random().toString(16).slice(2)}_${Date.now()}`);
-    localStorage.setItem(key, v);
-  }
-  return v;
-}
-const UID = getUID();
-
-function now() { return Date.now(); }
-
-function getOrCreateSessionId() {
-  // One session per tab visit
-  const key = "vid_session_id";
-  let sid = sessionStorage.getItem(key);
-  if (!sid) {
-    sid = (crypto?.randomUUID?.() || `s_${Math.random().toString(16).slice(2)}_${Date.now()}`);
-    sessionStorage.setItem(key, sid);
-  }
-  return sid;
-}
-const SESSION_ID = getOrCreateSessionId();
-
-// Minimal consent banner (1-time). You can remove if you already have consent UX.
+// ---------- Consent (minimal, 1-time) ----------
 function ensureConsent() {
+  // Consent is optional for MVP; if you want NO banner, just return true.
   const key = "vid_analytics_ok";
-  const ok = localStorage.getItem(key);
-  if (ok === "1") return true;
+  if (localStorage.getItem(key) === "1") return true;
 
-  // super minimal banner
   const bar = document.createElement("div");
   bar.style.cssText = `
     position:fixed;left:12px;right:12px;bottom:12px;z-index:9999;
@@ -226,10 +146,32 @@ function ensureConsent() {
 
   return false;
 }
+ensureConsent();
 
-const hasConsent = ensureConsent(); // if false, we still track locally but won't send
+// ---------- Session analytics (minimal) ----------
+function getUID() {
+  const key = "vid_uid";
+  let v = localStorage.getItem(key);
+  if (!v) {
+    v = (crypto?.randomUUID?.() || `u_${Math.random().toString(16).slice(2)}_${Date.now()}`);
+    localStorage.setItem(key, v);
+  }
+  return v;
+}
 
-// Session metrics
+function getOrCreateSessionId() {
+  const key = "vid_session_id";
+  let sid = sessionStorage.getItem(key);
+  if (!sid) {
+    sid = (crypto?.randomUUID?.() || `s_${Math.random().toString(16).slice(2)}_${Date.now()}`);
+    sessionStorage.setItem(key, sid);
+  }
+  return sid;
+}
+
+const UID = getUID();
+const SESSION_ID = getOrCreateSessionId();
+
 const session = {
   sid: SESSION_ID,
   uid: UID,
@@ -239,7 +181,7 @@ const session = {
   videosSeen: 0,
   videoIdsSeen: [],
   activeVideoId: null,
-  watchMsByVideo: {}, // {feedId: ms}
+  watchMsByVideo: {},  // {id: ms}
   lastTickAt: now(),
   muted: true,
   ref: document.referrer || "",
@@ -247,12 +189,9 @@ const session = {
   lang: navigator.language || "",
   tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "",
   screen: `${window.screen?.width || 0}x${window.screen?.height || 0}`,
-  ua: navigator.userAgent.slice(0, 220),
+  ua: (navigator.userAgent || "").slice(0, 220),
 };
 
-// Hook into your existing feed observer:
-// 👉 In your observer callback where you set caption/title,
-// also set session.activeVideoId = current slide id and record "seen".
 function markVideoSeen(feedId) {
   if (!feedId) return;
   if (!session.videoIdsSeen.includes(feedId)) {
@@ -272,62 +211,116 @@ function tickWatchTime() {
 
   session.watchMsByVideo[vid] = (session.watchMsByVideo[vid] || 0) + dt;
 }
-
 setInterval(tickWatchTime, 1000);
 
-// If you have globalMuted variable, keep session.muted in sync.
-// Example: after you toggle mute, set session.muted = globalMuted;
-// Here we also listen to a custom global variable if present.
-try { session.muted = !!window.globalMuted; } catch {}
+// ---------- Feed build (random each visit) ----------
+const URLS = RAW_LIST.map(normalizeToUrl);
+shuffleInPlace(URLS);
 
-// Attach to your feed element to learn which slide is currently active.
-// Assumes you have slides with dataset.id (like v1, v2...).
-const feedElForSession = document.getElementById("feed");
-if (feedElForSession) {
-  // On scroll end-ish, find the closest slide in view
-  let scrollTimer = null;
-  feedElForSession.addEventListener("scroll", () => {
-    clearTimeout(scrollTimer);
-    scrollTimer = setTimeout(() => {
-      const slides = Array.from(document.querySelectorAll(".slide"));
-      if (!slides.length) return;
-      const mid = window.innerHeight * 0.5;
-      let best = null;
-      let bestDist = 1e9;
-      for (const s of slides) {
-        const r = s.getBoundingClientRect();
-        const center = (r.top + r.bottom) / 2;
-        const dist = Math.abs(center - mid);
-        if (dist < bestDist) { bestDist = dist; best = s; }
-      }
-      const id = best?.dataset?.id || null;
-      if (id && id !== session.activeVideoId) {
-        session.activeVideoId = id;
-        markVideoSeen(id);
-      }
-    }, 160);
-  }, { passive: true });
+const FEED = URLS.map((url, idx) => ({
+  id: `v${idx + 1}`,
+  url,
+  title: pickRandom(TITLE_BANK),
+}));
+
+// ---------- Render feed ----------
+let observer = null;
+let globalMuted = true;
+
+function setMuteAll(muted) {
+  globalMuted = muted;
+  session.muted = muted;
+  document.querySelectorAll(".slide video").forEach(v => (v.muted = muted));
+  if (btnMute) btnMute.innerHTML = muteIcon(muted);
+  toast(muted ? "Muted" : "Unmuted");
 }
 
-// Make sure we have first active video after load
-setTimeout(() => {
+if (btnMute) {
+  btnMute.addEventListener("click", () => setMuteAll(!globalMuted));
+}
+
+function render() {
+  if (!feedEl) return;
+  feedEl.innerHTML = "";
+
+  FEED.forEach(item => {
+    const s = document.createElement("section");
+    s.className = "slide";
+    s.dataset.id = item.id;
+    s.dataset.title = item.title;
+
+    // Note: autoplay policy requires muted to autoplay reliably
+    s.innerHTML = `<video playsinline muted loop preload="metadata" src="${item.url}"></video>`;
+
+    // Tap slide to pause/play
+    s.addEventListener("click", () => {
+      const v = s.querySelector("video");
+      if (!v) return;
+      if (v.paused) v.play().catch(() => {});
+      else v.pause();
+    });
+
+    feedEl.appendChild(s);
+  });
+
+  // init first active
   const first = document.querySelector(".slide");
   if (first?.dataset?.id) {
     session.activeVideoId = first.dataset.id;
     markVideoSeen(first.dataset.id);
+    if (captionEl) captionEl.textContent = first.dataset.title || "";
   }
-}, 500);
 
-// Send summary on session end
+  setupObserver();
+}
+
+function setupObserver() {
+  if (observer) observer.disconnect();
+
+  observer = new IntersectionObserver((entries) => {
+    entries.forEach(async (entry) => {
+      const slide = entry.target;
+      const video = slide.querySelector("video");
+      if (!video) return;
+
+      if (entry.isIntersecting) {
+        // pause others
+        document.querySelectorAll(".slide video").forEach(v => {
+          if (v !== video) v.pause();
+        });
+
+        // update active + seen + caption
+        const id = slide.dataset.id || null;
+        if (id && id !== session.activeVideoId) {
+          session.activeVideoId = id;
+          markVideoSeen(id);
+        }
+        if (captionEl) captionEl.textContent = slide.dataset.title || "";
+
+        // autoplay
+        try {
+          video.muted = globalMuted;
+          await video.play();
+        } catch {
+          // ignored
+        }
+      } else {
+        video.pause();
+      }
+    });
+  }, { root: feedEl, threshold: 0.66 });
+
+  document.querySelectorAll(".slide").forEach(s => observer.observe(s));
+}
+
+// ---------- Send session on end ----------
 function buildSessionPayload() {
   const endedAt = now();
   session.endedAt = endedAt;
   session.durationMs = Math.max(0, endedAt - session.startedAt);
 
-  // Compress watch map
-  const watch = session.watchMsByVideo;
-  const top = Object.entries(watch)
-    .sort((a,b)=>b[1]-a[1])
+  const top = Object.entries(session.watchMsByVideo)
+    .sort((a, b) => b[1] - a[1])
     .slice(0, 5)
     .map(([feedId, ms]) => ({ feedId, ms }));
 
@@ -351,37 +344,39 @@ function buildSessionPayload() {
 }
 
 let sent = false;
-
 function sendSession() {
   if (sent) return;
   sent = true;
 
-  // If you want to strictly require consent to send:
+  // Require consent to send (safe default). If you want to send regardless, remove this if-block.
   if (localStorage.getItem("vid_analytics_ok") !== "1") return;
 
   const payload = buildSessionPayload();
   const body = JSON.stringify(payload);
 
-  // Best-effort: sendBeacon (works on unload)
   if (navigator.sendBeacon) {
     const blob = new Blob([body], { type: "application/json" });
     navigator.sendBeacon(SESSION_ENDPOINT, blob);
     return;
   }
 
-  // Fallback: keepalive fetch
   fetch(SESSION_ENDPOINT, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body,
     keepalive: true
-  }).catch(()=>{});
+  }).catch(() => {});
 }
 
-// Trigger send on end-of-session signals
+// end-of-session signals
 window.addEventListener("pagehide", sendSession);
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "hidden") sendSession();
 });
-// Optional: if you want ZERO text on screen, uncomment next line:
-// captionEl.style.display = "none";
+
+// ---------- Init ----------
+render();
+setMuteAll(true);
+
+// If you want ZERO text overlay (ultra minimal), uncomment:
+// if (captionEl) captionEl.style.display = "none";
